@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.App {
+  font-family: "Sora", sans-serif;
+  font-family: "Montserrat", sans-serif;
+}
+h1 {
+  font-family: "Montserrat", sans-serif;
+}
+p {
+  font-family: "Sora", sans-serif;
+}
+
+/* Toast notifications for success and error messages */
+.success-msg,
+.error-msg {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 9999;
+  min-width: 220px;
+  max-width: 320px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  color: #ffffff;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.success-msg {
+  background-color: #16a34a; /* green-600 */
+}
+
+.error-msg {
+  background-color: #dc2626; /* red-600 */
+}
+
+.toast-close {
+  border: none;
+  background: transparent;
+  color: #ffffff;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+
