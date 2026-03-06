@@ -1,0 +1,40 @@
+# Python / Django
+*.pyc
+__pycache__/
+*.py[cod]
+*.pyo
+db.sqlite3
+*.log
+
+# Virtual environment
+backend/env/
+backend/venv/
+backend/.venv/
+
+# Environment secrets
+.env
+.envs/
+backend/.envs/
+
+# Node / React
+frontend/node_modules/
+frontend/build/
+frontend/.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Gemini AI
+.gemini/
+
+# Misc
+*.bak
+*.tmp
