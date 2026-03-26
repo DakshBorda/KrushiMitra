@@ -1,0 +1,124 @@
+/* KrushiMitra Admin Custom Styles */
+/* Green accent overrides for jazzmin/AdminLTE theme */
+
+:root {
+    --km-green: #68AC5D;
+    --km-green-dark: #4a8a42;
+    --km-green-light: #e8f5e6;
+}
+
+/* Navbar brand color override */
+.main-header.navbar {
+    background: linear-gradient(135deg, #68AC5D 0%, #4a8a42 100%) !important;
+    border-bottom: 3px solid #4a8a42;
+}
+
+/* Sidebar active link */
+.nav-sidebar .nav-link.active {
+    background-color: var(--km-green) !important;
+    color: #fff !important;
+}
+
+.nav-sidebar .nav-link:hover {
+    background-color: var(--km-green-light) !important;
+}
+
+/* Buttons - success green */
+.btn-success, .btn-outline-success:hover {
+    background-color: var(--km-green) !important;
+    border-color: var(--km-green) !important;
+}
+
+.btn-outline-success {
+    color: var(--km-green) !important;
+    border-color: var(--km-green) !important;
+}
+
+/* Links */
+a {
+    color: var(--km-green-dark);
+}
+
+a:hover {
+    color: var(--km-green);
+}
+
+/* Admin page title */
+.content-header h1 {
+    font-weight: 600;
+    color: #2d3748;
+}
+
+/* Card headers */
+.card-header {
+    background: var(--km-green-light) !important;
+    border-bottom: 2px solid var(--km-green) !important;
+}
+
+.card-header .card-title {
+    color: var(--km-green-dark) !important;
+    font-weight: 600;
+}
+
+/* Table styling */
+.table thead th {
+    background-color: var(--km-green) !important;
+    color: white !important;
+    font-weight: 600;
+    border: none !important;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: var(--km-green-light);
+}
+
+/* Badge / Pill styles for status */
+.badge-success {
+    background-color: var(--km-green) !important;
+}
+
+/* Login page customization */
+.login-page {
+    background: linear-gradient(135deg, #68AC5D 0%, #2d5a27 100%) !important;
+}
+
+.login-box .card {
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.login-box .btn-primary {
+    background-color: var(--km-green) !important;
+    border-color: var(--km-green) !important;
+    border-radius: 8px;
+    padding: 10px;
+    font-weight: 600;
+}
+
+/* Sidebar brand */
+.brand-link {
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    font-weight: 700 !important;
+}
+
+/* Pagination active */
+.page-item.active .page-link {
+    background-color: var(--km-green) !important;
+    border-color: var(--km-green) !important;
+}
+
+/* Select2 / Form focus */
+.form-control:focus {
+    border-color: var(--km-green) !important;
+    box-shadow: 0 0 0 0.2rem rgba(104, 172, 93, 0.25) !important;
+}
+
+/* Dashboard info boxes */
+.info-box .info-box-icon {
+    border-radius: 8px;
+}
+
+/* Smooth transitions */
+.nav-link, .btn, a {
+    transition: all 0.2s ease;
+}

@@ -59,6 +59,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 # APPS
 # ------------------------------------------------------------------------------
 DJANGO_APPS = [
+    "jazzmin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -388,4 +389,114 @@ TWILIO = {
     "ACCOUNT_SID": env("TWILIO_ACCOUNT_SID"),
     "AUTH_TOKEN": env("TWILIO_AUTH_TOKEN"),
     "VERIFY_SID": env("TWILIO_VERIFY_SID"),
+}
+
+# JAZZMIN ADMIN THEME
+# ------------------------------------------------------------------------------
+JAZZMIN_SETTINGS = {
+    # Title & Branding
+    "site_title": "KrushiMitra Admin",
+    "site_header": "KrushiMitra",
+    "site_brand": "KrushiMitra",
+    "welcome_sign": "Welcome to KrushiMitra Admin Panel",
+    "copyright": "KrushiMitra - Farm Equipment Rental Platform",
+
+    # Search
+    "search_model": ["users.User", "equipment.Equipment"],
+
+    # Top Menu Links
+    "topmenu_links": [
+        {"name": "Dashboard", "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"name": "Visit Site", "url": "http://localhost:3000", "new_window": True},
+        {"name": "API Docs", "url": "/api/docs/", "new_window": True},
+    ],
+
+    # User Avatar
+    "user_avatar": "profile_picture",
+
+    # Side Menu
+    "show_sidebar": True,
+    "navigation_expanded": True,
+    "hide_apps": ["authtoken", "sites"],
+    "hide_models": [],
+
+    # Custom Order
+    "order_with_respect_to": [
+        "users",
+        "equipment",
+        "booking",
+        "brand",
+        "equipment_type",
+        "enquiry",
+        "auth",
+    ],
+
+    # Icons (Font Awesome)
+    "icons": {
+        "auth": "fas fa-users-cog",
+        "auth.user": "fas fa-user",
+        "auth.Group": "fas fa-users",
+        "users.User": "fas fa-user-circle",
+        "equipment.Equipment": "fas fa-tractor",
+        "equipment.EquipmentRating": "fas fa-star",
+        "booking.Booking": "fas fa-calendar-check",
+        "brand.Brand": "fas fa-tags",
+        "equipment_type.EquipmentType": "fas fa-cogs",
+        "enquiry.HelpCentre": "fas fa-question-circle",
+        "enquiry.FeedbackForm": "fas fa-comment-dots",
+        "enquiry.PartnerDispute": "fas fa-exclamation-triangle",
+        "enquiry.CancelForm": "fas fa-times-circle",
+        "enquiry.ReportEquipment": "fas fa-flag",
+        "account.EmailAddress": "fas fa-envelope",
+    },
+    "default_icon_parents": "fas fa-folder",
+    "default_icon_children": "fas fa-circle",
+
+    # Related Modal
+    "related_modal_active": True,
+
+    # Custom CSS
+    "custom_css": "admin/css/admin_custom.css",
+
+    # UI Customizer
+    "show_ui_builder": False,
+
+    # Change view
+    "changeform_format": "horizontal_tabs",
+    "changeform_format_overrides": {
+        "users.User": "collapsible",
+        "equipment.Equipment": "horizontal_tabs",
+    },
+}
+
+JAZZMIN_UI_TWEAKS = {
+    "navbar_small_text": False,
+    "footer_small_text": False,
+    "body_small_text": False,
+    "brand_small_text": False,
+    "brand_colour": False,
+    "accent": "accent-success",
+    "navbar": "navbar-dark navbar-success",
+    "no_navbar_border": False,
+    "navbar_fixed": True,
+    "layout_boxed": False,
+    "footer_fixed": False,
+    "sidebar_fixed": True,
+    "sidebar": "sidebar-dark-success",
+    "sidebar_nav_small_text": False,
+    "sidebar_disable_expand": False,
+    "sidebar_nav_child_indent": True,
+    "sidebar_nav_compact_style": False,
+    "sidebar_nav_legacy_style": False,
+    "sidebar_nav_flat_style": False,
+    "theme": "default",
+    "dark_mode_theme": None,
+    "button_classes": {
+        "primary": "btn-outline-primary",
+        "secondary": "btn-outline-secondary",
+        "info": "btn-info",
+        "warning": "btn-warning",
+        "danger": "btn-danger",
+        "success": "btn-success",
+    },
 }
