@@ -94,7 +94,7 @@ const Header = () => {
                 alt="profile_pic"
               />
               <p className="text-lg font-semibold">
-                {"Hi, " + authState.user.data.first_name}
+                {"Hi, " + (authState?.user?.data?.first_name || "User")}
               </p>
               {/* <p className="text-lg font-semibold">{"Hi, Gajendra"}</p> */}
             </div>

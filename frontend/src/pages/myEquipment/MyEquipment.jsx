@@ -18,7 +18,7 @@ const MyEquipment = () => {
             return;
         }
         fetchEquipments();
-    }, []);
+    }, [navigate]);
 
     async function fetchEquipments() {
         try {

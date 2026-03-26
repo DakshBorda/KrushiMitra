@@ -1,10 +1,9 @@
-import axios from "./config";
 import instance from "./config";
 import Cookies from "js-cookie";
 
 export const getEquips = async () => {
   try {
-    return await axios.get("/api/equipment");
+    return await instance.get("/api/equipment");
   } catch (error) {
     console.log("Error while calling getEquips API", error);
   }
@@ -12,16 +11,16 @@ export const getEquips = async () => {
 
 export const getBrands = async () => {
   try {
-    return await axios.get("/api/brand/");
+    return await instance.get("/api/brand/");
   } catch (error) {
-    console.log("Error while calling getEquips API", error);
+    console.log("Error while calling getBrands API", error);
   }
 };
 // /api/brand/
 
 export const getEquip = async (id) => {
   try {
-    return await axios.get(`/api/equipment/${id}`);
+    return await instance.get(`/api/equipment/${id}`);
   } catch (error) {
     console.log("Error while calling getEquip API", error);
   }
@@ -29,7 +28,7 @@ export const getEquip = async (id) => {
 
 export const getEquipsList = async () => {
   try {
-    return await axios.get("/api/equipment_type");
+    return await instance.get("/api/equipment_type");
   } catch (error) {
     console.log("Error while calling getEquipsList API", error);
   }
@@ -55,7 +54,7 @@ export const createEquipmentReport = async ({
       { headers }
     );
   } catch (error) {
-    console.log("Error while calling createBooking API", error);
+    console.log("Error while calling createEquipmentReport API", error);
   }
 };
 
@@ -160,7 +159,7 @@ export const deleteEquipment = async (id) => {
 //             "Content-Type": "application/json",
 //             Authorization: `"Bearer ${Cookies.get('access-token')}`
 //         };
-//         return await axios.get('/api/booking' , { headers });
+//         return await instance.get('/api/booking' , { headers });
 //     } catch(error) {
 //         console.log('Error while calling getBookings API', error);
 //     }
@@ -172,7 +171,7 @@ export const deleteEquipment = async (id) => {
 //             "Content-Type": "application/json",
 //             Authorization: `"Bearer ${Cookies.get('access-token')}`
 //         };
-//         return await axios.get(`/api/booking/detail/${id}` , { headers });
+//         return await instance.get(`/api/booking/detail/${id}` , { headers });
 //     } catch(error) {
 //         console.log('Error while calling getBookingDetail API', error);
 //     }
@@ -184,7 +183,7 @@ export const deleteEquipment = async (id) => {
 //             "Content-Type": "application/json",
 //             Authorization: `"Bearer ${Cookies.get('access-token')}`
 //         };
-//         return await axios.get(`/api/booking/update/${id}` , { data }, { headers });
+//         return await instance.get(`/api/booking/update/${id}` , { data }, { headers });
 //     } catch(error) {
 //         console.log('Error while calling getBookingDetail API', error);
 //     }
@@ -193,7 +192,7 @@ export const deleteEquipment = async (id) => {
 //  Feedback
 export const submitFeedback = async ({ name, phone_number, description }) => {
   try {
-    return await axios.post("/enquiry/feedback", {
+    return await instance.post("/enquiry/feedback", {
       name,
       phone_number,
       description,

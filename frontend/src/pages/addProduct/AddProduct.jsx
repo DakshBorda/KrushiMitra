@@ -155,7 +155,7 @@ const AddProduct = () => {
                 className="appearance-none block w-1/2 rounded py-3 px-2 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
                 id="grid-last-name"
                 type="text"
-                placeholder="abc@gmail.com"
+                placeholder="Enter equipment title"
                 value={data.title}
                 onChange={(e) => {
                   setData({ ...data, title: e.target.value });
@@ -200,7 +200,7 @@ const AddProduct = () => {
                 className="appearance-none block w-1/2 rounded py-3 px-2 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
                 id="grid-last-name"
                 type="text"
-                placeholder="abc@gmail.com"
+                placeholder="Enter description"
                 value={data.description}
                 onChange={(e) => {
                   setData({ ...data, description: e.target.value });
@@ -219,7 +219,7 @@ const AddProduct = () => {
                 className="appearance-none block w-1/2 rounded py-3 px-2 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
                 id="grid-last-name"
                 type="text"
-                placeholder="abc@gmail.com"
+                placeholder="e.g. 500"
                 value={data.daily_rental}
                 onChange={(e) => {
                   setData({ ...data, daily_rental: e.target.value });
@@ -237,7 +237,7 @@ const AddProduct = () => {
                 className="appearance-none block w-1/2 rounded py-3 px-2 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
                 id="grid-last-name"
                 type="text"
-                placeholder="abc@gmail.com"
+                placeholder="e.g. 100"
                 value={data.hourly_rental}
                 onChange={(e) => {
                   setData({ ...data, hourly_rental: e.target.value });
@@ -283,7 +283,7 @@ const AddProduct = () => {
                 className="appearance-none block w-1/2 rounded py-3 px-2 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
                 id="grid-last-name"
                 type="text"
-                placeholder="abc@gmail.com"
+                placeholder="e.g. 2020"
                 value={data.manufacturing_year}
                 onChange={(e) => {
                   setData({ ...data, manufacturing_year: e.target.value });
@@ -301,7 +301,7 @@ const AddProduct = () => {
                 className="appearance-none block w-1/2 rounded py-3 px-2 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
                 id="grid-last-name"
                 type="text"
-                placeholder="abc@gmail.com"
+                placeholder="e.g. Sonalika DI 745"
                 value={data.model}
                 onChange={(e) => {
                   setData({ ...data, model: e.target.value });
@@ -339,7 +339,7 @@ const AddProduct = () => {
                 className="appearance-none block w-1/2 rounded py-3 px-2 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
                 id="grid-last-name"
                 type="text"
-                placeholder="abc@gmail.com"
+                placeholder="e.g. Ahmedabad, Gujarat"
                 value={data.equipment_location}
                 onChange={(e) => {
                   setData({ ...data, equipment_location: e.target.value });
@@ -358,7 +358,7 @@ const AddProduct = () => {
                 className="appearance-none block w-1/2 rounded py-3 px-2 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
                 id="grid-last-name"
                 type="text"
-                placeholder="abc@gmail.com"
+                placeholder="e.g. 50"
                 value={data.horsepower}
                 onChange={(e) => {
                   setData({ ...data, horsepower: e.target.value });
@@ -377,7 +377,7 @@ const AddProduct = () => {
                 className="appearance-none block w-1/2 rounded py-3 px-2 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
                 id="grid-last-name"
                 type="text"
-                placeholder="abc@gmail.com"
+                placeholder="e.g. 150 cm"
                 value={data.height}
                 onChange={(e) => {
                   setData({ ...data, height: e.target.value });
@@ -395,7 +395,7 @@ const AddProduct = () => {
                 className="appearance-none block w-1/2 rounded py-3 px-2 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
                 id="grid-last-name"
                 type="text"
-                placeholder="abc@gmail.com"
+                placeholder="e.g. 200 cm"
                 value={data.width}
                 onChange={(e) => {
                   setData({ ...data, width: e.target.value });

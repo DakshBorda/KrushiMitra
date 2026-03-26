@@ -61,7 +61,6 @@ function App() {
           uuid: uuid,
           accessToken: access
         });
-        console.log(data);
         dispatch(getSaveProfileAction(data));
       }
     }

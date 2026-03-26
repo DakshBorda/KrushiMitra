@@ -28,8 +28,7 @@ const Product = () => {
             // console.log(data);
         }
         getEquipment();
-    }, [params.id])
-    console.log(equipment);
+    }, [params.eqId])
 
 
     const handleSelect = (ranges) => {
@@ -57,10 +56,12 @@ const Product = () => {
     // }
 
     const handleBooking = async () => {
+        if (!Cookies.get('access-token')) {
+            navigate('/login');
+            return;
+        }
         await createBooking(equipment?.id, formattedStartDate, formattedEndDate, "22:22", "01:01");
-        // console.log(data);
         navigate('/booking-history');
-
     }
     var getDaysArray = function (start, end) {
         for (var arr = [], dt = new Date(start); dt <= new Date(end); dt.setDate(dt.getDate() + 1)) {
@@ -92,8 +93,7 @@ const Product = () => {
     ))
 
     const redirect = () => {
-        window.location.href = 'http://localhost:3001/login';
-        return null;
+        navigate('/chat');
     }
 
 
@@ -112,27 +112,14 @@ const Product = () => {
                     // width="100%"
                     dynamicHeight="100%"
                 >
-                    <div className="relative">
-                        <img style={{ height: '300px', width: '800px', objectFit: 'contain' }} src={equipment?.image_1} alt='' />
-                    </div>
-                    <div className="relative">
-                        {equipment?.image_2 != null && <img style={{ height: '300px', width: '800px', objectFit: 'contain' }} src={equipment?.image_2} alt='' />}
-                    </div>
-                    <div className="relative">
-                        {equipment?.image_3 != null && <img style={{ height: '300px', width: '800px', objectFit: 'contain' }} src={equipment?.image_3} alt='' />}
-                    </div>
-                    <div className="relative">
-                        {equipment?.image_4 != null && <img style={{ height: '300px', width: '800px', objectFit: 'contain' }} src={equipment?.image_4} alt='' />}
-                    </div>
-                    {
-                        equipment?.image_5 != null &&
-                        <div className="relative">
-                            {<img style={{ height: '300px', width: '800px', objectFit: 'contain' }} src={equipment?.image_5} alt='' />}
-                        </div>
+                    {[equipment?.image_1, equipment?.image_2, equipment?.image_3, equipment?.image_4, equipment?.image_5]
+                        .filter(img => img != null)
+                        .map((img, idx) => (
+                            <div key={idx} className="relative">
+                                <img style={{ height: '300px', width: '800px', objectFit: 'contain' }} src={img} alt={`Equipment ${idx + 1}`} />
+                            </div>
+                        ))
                     }
-                    {/* <div>
-                        <img style={{ height: '300px', objectFit: 'cover'}} src="https://helpx.adobe.com/content/dam/help/en/photoshop/using/convert-color-image-black-white/jcr_content/main-pars/before_and_after/image-before/Landscape-Color.jpg" alt='' />
-                    </div> */}
                 </Carousel>
             </div>
 
@@ -222,8 +209,8 @@ const Product = () => {
                                     Book Now
                                 </button>
                             ) : (
-                                <button onClick={(e) => handleBooking(e)} className="bg-darkgreen opacity-50 cursor-not-allowed hover:bg-[#8cdf80] text-white w-full font-semibold py-1 px-8 rounded">
-                                    Book Now
+                                <button onClick={() => navigate('/login')} className="bg-darkgreen opacity-50 cursor-not-allowed hover:bg-[#8cdf80] text-white w-full font-semibold py-1 px-8 rounded">
+                                    Login to Book
                                 </button>
                             )
                         }
@@ -244,7 +231,7 @@ const Product = () => {
                         }
 
                     </div>
-                    <p className='text-center'><i className="pr-2 text-red-500 fa-solid fa-flag"></i> <a className='text-red-500 font-semibold text-md underline-offset-2' onClick={() => navigate(`/equipment-report/${equipment?.id}`)}>Report this equipment</a></p>
+                    <p className='text-center'><i className="pr-2 text-red-500 fa-solid fa-flag"></i> <a className='text-red-500 font-semibold text-md underline-offset-2 cursor-pointer' onClick={() => navigate(`/equipment-report/${equipment?.eq_id || equipment?.id}`)}>Report this equipment</a></p>
                 </div>
             </div>
         </div>
