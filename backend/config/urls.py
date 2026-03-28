@@ -56,6 +56,7 @@ urlpatterns += [
         "api/equipment_type/",
         include("kex.equipment_type.api.urls", namespace="equipment_type-api"),
     ),
+    path("api/chat/", include("kex.chat.urls", namespace="chat-api")),
     path("auth-token/", obtain_auth_token),
     path(
         "swagger/",

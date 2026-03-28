@@ -149,6 +149,7 @@ class EquipmentDetailSerializer(ModelSerializer):
     def get_owner(self, obj):
         owner = obj.owner
         detail = {
+            "id": owner.id,
             "first_name": owner.first_name,
             "last_name": owner.last_name,
             "address": owner.address,

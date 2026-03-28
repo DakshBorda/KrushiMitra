@@ -92,8 +92,12 @@ const Product = () => {
 
     ))
 
-    const redirect = () => {
-        navigate('/chat');
+    const startChat = () => {
+        if (equipment?.owner?.id) {
+            navigate(`/chat?userId=${equipment.owner.id}`);
+        } else {
+            navigate('/chat');
+        }
     }
 
 
@@ -220,12 +224,12 @@ const Product = () => {
 
                         {
                             Cookies.get('access-token') ? (
-                                <button onClick={() => redirect()} className="bg-blue-500 hover:bg-blue-400 mt-8 text-white w-full font-semibold py-1 px-8 rounded">
-                                    Chat now <i className="pl-4 fa-solid fa-comment"></i>
+                                <button onClick={() => startChat()} className="bg-[#68AC5D] hover:bg-[#5a9c4f] mt-8 text-white w-full font-semibold py-2 px-8 rounded transition">
+                                    Chat with Owner <i className="pl-4 fa-solid fa-comment"></i>
                                 </button>
                             ) : (
-                                <button className="bg-blue-500 hover:bg-blue-400 cursor-not-allowed opacity-50 mt-8 text-white w-full font-semibold py-1 px-8 rounded">
-                                    Chat now <i className="pl-4 fa-solid fa-comment"></i>
+                                <button onClick={() => navigate('/login')} className="bg-[#68AC5D] opacity-50 cursor-not-allowed mt-8 text-white w-full font-semibold py-2 px-8 rounded">
+                                    Login to Chat <i className="pl-4 fa-solid fa-comment"></i>
                                 </button>
                             )
                         }
