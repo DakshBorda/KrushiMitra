@@ -35,11 +35,12 @@ const EquipmentReport = () => {
       <div className="text-center">
         <div className="p-9" style={{ backgroundColor: "#68AC5D" }}>
           <h1 className="text-4xl font-bold text-white">
-            Equipment Report Form
+            Report an Equipment Issue
           </h1>
           <p className="text-2xl font-semibold text-white my-4">
-            Report equipment
+            Help us maintain quality by reporting issues with equipment listings
           </p>
+
         </div>
         <div className="w-1/3 -translate-y-10 mx-auto">
           <form
@@ -70,7 +71,7 @@ const EquipmentReport = () => {
               onChange={(e) => setReportReason(e.target.value)}
               className="mt-1 block mb-4 w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             >
-              <option value={0}>Select Suitable option</option>
+              <option value={0}>Select a reason</option>
               <option value={20}>Belongs to another person</option>
               <option value={30}>Is misleading in any way</option>
               <option value={40}>
@@ -83,7 +84,7 @@ const EquipmentReport = () => {
               required
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Enter your message ..."
+              placeholder="Describe the issue in detail..."
               className="shadow-inner border-none w-100 rounded-2xl placeholder:font-semibold placeholder:text-gray-400 placeholder:text-md h-10 input-style mb-3 p-3 h-32 "
             />
             <p

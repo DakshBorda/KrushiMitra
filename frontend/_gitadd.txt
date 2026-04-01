@@ -1,0 +1,297 @@
+git : warning: in the working copy of 
+'backend/config/asgi.py', LF will be replaced by 
+CRLF the next time Git touches it
+At line:1 char:32
++ Set-Location 'E:\KrushiMitra'; git add -A 2>&1 
+| Out-File -FilePath ' ...
++                                ~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (warn 
+   ing: in the... Git touches it:String) [], Rem  
+  oteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+warning: in the working copy of 
+'backend/config/celery_app.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/config/settings/base.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/config/urls.py', LF will be replaced by 
+CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/booking/admin.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/booking/api/filters.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/booking/api/serializers.py', LF will 
+be replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/booking/api/urls.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/booking/api/views.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/booking/apps.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/booking/models.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/brand/admin.py', LF will be replaced 
+by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/brand/apps.py', LF will be replaced 
+by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/brand/models.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/chat/apps.py', LF will be replaced 
+by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/chat/consumers.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/chat/models.py', LF will be replaced 
+by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/chat/serializers.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/chat/urls.py', LF will be replaced 
+by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/chat/views.py', LF will be replaced 
+by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/enquiry/admin.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/enquiry/api/serializers.py', LF will 
+be replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/enquiry/apps.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/enquiry/models.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/equipment/admin.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/equipment/api/serializers.py', LF 
+will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'backend/kex/equipment/api/views.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/equipment/apps.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/equipment/models.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/equipment_type/admin.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/equipment_type/apps.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/equipment_type/models.py', LF will 
+be replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/static/admin/css/admin_custom.css', 
+LF will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'backend/kex/users/admin.py', LF will be replaced 
+by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/users/api/serializers.py', LF will 
+be replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/users/api/views.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/users/apps.py', LF will be replaced 
+by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/users/models.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'frontend/src/api/bookingAPI.js', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'frontend/src/api/chatAPI.js', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/comp
+onents/cancellationForm/index.js', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/comp
+onents/dashboardComponent/product/ProductItem.css'
+, LF will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 'frontend/src/comp
+onents/dashboardComponent/product/ProductItem.jsx'
+, LF will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'frontend/src/components/footer/Footer.css', LF 
+will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'frontend/src/components/footer/Footer.jsx', LF 
+will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'frontend/src/components/header/Header.css', LF 
+will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'frontend/src/components/header/Header.jsx', LF 
+will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 'frontend/src/comp
+onents/homeComponent/banner/Banner.css', LF will 
+be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/comp
+onents/homeComponent/banner/Banner.jsx', LF will 
+be replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'frontend/src/pages/ContactUs/ContactUs.jsx', LF 
+will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'frontend/src/pages/FAQ.js', LF will be replaced 
+by CRLF the next time Git touches it
+warning: in the working copy of 
+'frontend/src/pages/Help.js', LF will be replaced 
+by CRLF the next time Git touches it
+warning: in the working copy of 
+'frontend/src/pages/addProduct/AddProduct.css', 
+LF will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'frontend/src/pages/addProduct/AddProduct.jsx', 
+LF will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'frontend/src/pages/bookingHistory/index.js', LF 
+will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 'frontend/src/page
+s/bookingRequest/BookingRequest.css', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/page
+s/bookingRequest/BookingRequest.jsx', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/page
+s/cancellationPage/CancellationPolicy.jsx', LF 
+will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'frontend/src/pages/chat/Chat.css', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'frontend/src/pages/chat/Chat.jsx', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'frontend/src/pages/dashboard/Dashboard.css', LF 
+will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'frontend/src/pages/dashboard/Dashboard.jsx', LF 
+will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'frontend/src/pages/feedback/Feedback.jsx', LF 
+will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'frontend/src/pages/myEquipment/MyEquipment.css', 
+LF will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'frontend/src/pages/myEquipment/MyEquipment.jsx', 
+LF will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'frontend/src/pages/product/Product.css', LF will 
+be replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'frontend/src/pages/product/Product.jsx', LF will 
+be replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'frontend/src/pages/updateProfile/index.js', LF 
+will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'backend/kex/booking/management/__init__.py', LF 
+will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 'backend/kex/booki
+ng/management/commands/__init__.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/kex/booki
+ng/management/commands/expire_bookings.py', LF 
+will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'backend/kex/booking/tasks.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/chat/middleware.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/notifications/__init__.py', LF will 
+be replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/notifications/admin.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/notifications/api/__init__.py', LF 
+will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'backend/kex/notifications/api/serializers.py', 
+LF will be replaced by CRLF the next time Git 
+touches it
+warning: in the working copy of 
+'backend/kex/notifications/api/urls.py', LF will 
+be replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/notifications/api/views.py', LF will 
+be replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/notifications/apps.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/kex/notif
+ications/migrations/__init__.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'backend/kex/notifications/models.py', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'frontend/src/api/notificationAPI.js', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'frontend/src/pages/NotFound.jsx', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/page
+s/bookingHistory/BookingHistory.css', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/page
+s/notifications/Notifications.css', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/page
+s/notifications/Notifications.jsx', LF will be 
+replaced by CRLF the next time Git touches it
+warning: in the working copy of 
+'frontend/src/pages/updateProfile/Profile.css', 
+LF will be replaced by CRLF the next time Git 
+touches it

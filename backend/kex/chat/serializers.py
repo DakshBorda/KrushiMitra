@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from kex.chat.models import Conversation, Message
+from kex.chat.models import Conversation, Message, MESSAGE_MAX_LENGTH
 from kex.users.models import User
 
 
@@ -23,6 +23,11 @@ class MessageSerializer(serializers.ModelSerializer):
 
 
 class ConversationListSerializer(serializers.ModelSerializer):
+    """
+    Conversation list serializer.
+    Uses pre-annotated _unread_count when available (from ConversationListView),
+    falls back to per-object query for single-conversation responses.
+    """
     other_user = serializers.SerializerMethodField()
     last_message = serializers.SerializerMethodField()
     unread_count = serializers.SerializerMethodField()
@@ -55,6 +60,10 @@ class ConversationListSerializer(serializers.ModelSerializer):
         return None
 
     def get_unread_count(self, obj):
+        # Use pre-annotated value if available (from ConversationListView)
+        if hasattr(obj, "_unread_count"):
+            return obj._unread_count
+        # Fallback for single conversation responses
         request = self.context.get("request")
         if request:
             return obj.unread_count(request.user)
@@ -64,9 +73,22 @@ class ConversationListSerializer(serializers.ModelSerializer):
         return obj.booking.booking_id if obj.booking else None
 
     def get_equipment_title(self, obj):
-        return obj.booking.equipment.title if obj.booking else None
+        try:
+            return obj.booking.equipment.title if obj.booking else None
+        except AttributeError:
+            return None
 
 
 class StartConversationSerializer(serializers.Serializer):
+    """
+    Serializer for starting/finding a conversation.
+
+    C1: equipment_id is optional — used when starting chat from equipment page.
+    """
     user_id = serializers.IntegerField(help_text="ID of the other user to chat with")
-    booking_id = serializers.IntegerField(required=False, help_text="Optional booking ID for context")
+    booking_id = serializers.IntegerField(
+        required=False, help_text="Optional booking ID for context"
+    )
+    equipment_id = serializers.IntegerField(
+        required=False, help_text="Equipment ID when starting chat from equipment page"
+    )

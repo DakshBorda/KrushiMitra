@@ -11,6 +11,11 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework import permissions
 
+# ── Admin Panel Branding ──
+admin.site.site_header = "KrushiMitra Administration"
+admin.site.site_title = "KrushiMitra Admin"
+admin.site.index_title = "Platform Management Dashboard"
+
 schema_view = get_schema_view(
     openapi.Info(
         title="KEX API",
@@ -57,6 +62,10 @@ urlpatterns += [
         include("kex.equipment_type.api.urls", namespace="equipment_type-api"),
     ),
     path("api/chat/", include("kex.chat.urls", namespace="chat-api")),
+    path(
+        "api/notifications/",
+        include("kex.notifications.api.urls", namespace="notifications-api"),
+    ),
     path("auth-token/", obtain_auth_token),
     path(
         "swagger/",

@@ -1,0 +1,12 @@
+/* Profile Page Responsive Overrides */
+@media (max-width: 768px) {
+  /* Stack the 2-column grid on mobile */
+  div[style*="grid-template-columns: 300px 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Stack field grid on mobile */
+  div[style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+}

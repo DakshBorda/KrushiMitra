@@ -1,90 +1,784 @@
-.leftWrapper {
-    width: 50%;
+/* ══════════════════════════════════════════════════════════
+   EQUIPMENT DETAIL PAGE — Premium Design System
+   Inspired by Airbnb, BigRentz, and modern SaaS booking UIs
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Page Layout ── */
+.pd-page {
+  min-height: 100vh;
+  background: #fafbf9;
 }
 
-.RightWrapper {
-    width: 40%;
+.pd-banner {
+  padding: 12px 24px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-.productHero {
-    height: 300px;
+.pd-banner.owner {
+  background: linear-gradient(135deg, #219653, #68AC5D);
+  color: white;
 }
 
-#myImg {
-    border-radius: 5px;
-    cursor: pointer;
-    transition: 0.3s;
+.pd-banner.unavailable {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #92400e;
+}
+
+/* ── Image Gallery ── */
+.pd-gallery {
+  background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+  overflow: hidden;
+}
+
+.pd-gallery .carousel .slide img {
+  max-height: 420px;
+  object-fit: contain;
+  background: #f9fafb;
+}
+
+/* ── Main Content ── */
+.pd-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 40px;
+  align-items: start;
+}
+
+/* ── Left Column ── */
+.pd-main {
+  min-width: 0;
+}
+
+.pd-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 24px;
+}
+
+.pd-title {
+  font-size: 26px;
+  font-weight: 800;
+  color: #1f2937;
+  line-height: 1.2;
+  margin: 0 0 6px 0;
+}
+
+.pd-subtitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pd-condition-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.pd-eq-id {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  color: #9ca3af;
+  background: #f3f4f6;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* ── Sections ── */
+.pd-section {
+  margin-bottom: 28px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.pd-section:last-child {
+  border-bottom: none;
+}
+
+.pd-section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pd-section-title i {
+  color: #68AC5D;
+  font-size: 16px;
+}
+
+.pd-description {
+  font-size: 14px;
+  line-height: 1.7;
+  color: #4b5563;
+}
+
+/* ── Specs Grid ── */
+.pd-specs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.pd-spec-card {
+  background: #fff;
+  border: 1px solid #f3f4f6;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.pd-spec-card:hover {
+  border-color: #d1fae5;
+  box-shadow: 0 2px 8px rgba(104, 172, 93, 0.08);
+  transform: translateY(-1px);
+}
+
+.pd-spec-icon {
+  font-size: 20px;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.pd-spec-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 2px;
+}
+
+.pd-spec-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── Owner Reliability ── */
+.pd-owner-trust {
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  border: 1px solid #bbf7d0;
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.pd-owner-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.pd-owner-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #68AC5D, #4a8a42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.pd-owner-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.pd-owner-joined {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.pd-trust-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.pd-trust-item {
+  background: #fff;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s;
+}
+
+.pd-trust-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(104, 172, 93, 0.12);
+}
+
+.pd-trust-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: #16a34a;
+}
+
+.pd-trust-value.fast {
+  color: #16a34a;
+}
+
+.pd-trust-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* ── Cancellation Policy ── */
+.pd-policy {
+  background: #fff;
+  border: 1px solid #f3f4f6;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.pd-policy-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #eff6ff;
+  color: #2563eb;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.pd-policy-text {
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ── Right Column (Booking Sidebar) ── */
+.pd-sidebar {
+  position: sticky;
+  top: 24px;
+}
+
+.pd-booking-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.pd-price-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.pd-price-amount {
+  font-size: 28px;
+  font-weight: 800;
+  color: #1f2937;
+}
+
+.pd-price-unit {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.pd-availability-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: auto;
+}
+
+.pd-availability-badge.available {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.pd-availability-badge.unavailable {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* ── Calendar Toggle ── */
+.pd-cal-toggle {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.pd-cal-toggle:hover {
+  border-color: #68AC5D;
+  background: #f0fdf4;
+}
+
+.pd-cal-toggle.open {
+  border-color: #68AC5D;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.pd-cal-wrap {
+  margin-bottom: 16px;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.pd-cal-wrap .rdrCalendarWrapper {
+  width: 100% !important;
+  font-size: 12px;
+}
+
+.pd-cal-wrap .rdrDateRangePickerWrapper {
+  width: 100% !important;
+}
+
+.pd-cal-wrap .rdrDefinedRangesWrapper {
+  display: none;
+}
+
+.pd-cal-wrap .rdrMonth {
+  width: 100% !important;
+}
+
+/* ── Cost Preview ── */
+.pd-cost-preview {
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  animation: pd-fade-in 0.3s ease;
+}
+
+@keyframes pd-fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.pd-cost-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.pd-cost-label {
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.pd-cost-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #166534;
+}
+
+.pd-cost-divider {
+  border: none;
+  border-top: 1px solid #bbf7d0;
+  margin: 8px 0;
+}
+
+.pd-cost-total-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #166534;
+}
+
+.pd-cost-total-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: #16a34a;
+}
+
+.pd-cost-dates {
+  font-size: 11px;
+  color: #6b7280;
+  text-align: center;
+  margin-top: 8px;
+}
+
+/* ── Booking Error ── */
+.pd-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #dc2626;
+  text-align: center;
+}
+
+/* ── Action Buttons ── */
+.pd-btn-book {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.pd-btn-book.primary {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  color: white;
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.25);
+}
+
+.pd-btn-book.primary:hover {
+  box-shadow: 0 6px 20px rgba(22, 163, 74, 0.35);
+  transform: translateY(-1px);
+}
+
+.pd-btn-book.disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.pd-btn-book.login {
+  background: linear-gradient(135deg, #68AC5D, #4a8a42);
+  color: white;
+  opacity: 0.7;
+}
+
+.pd-no-charge {
+  text-align: center;
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 12px 0 0 0;
+  font-weight: 500;
+}
+
+.pd-btn-chat {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #68AC5D;
+  border-radius: 12px;
+  background: white;
+  font-size: 14px;
+  font-weight: 600;
+  color: #68AC5D;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.pd-btn-chat:hover {
+  background: #f0fdf4;
+  border-color: #4a8a42;
+  color: #4a8a42;
+}
+
+/* ── Owner Card (when viewing own equipment) ── */
+.pd-owner-card {
+  background: #f0fdf4;
+  border: 2px solid #16a34a;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+}
+
+.pd-owner-card p {
+  margin: 0;
+}
+
+.pd-btn-manage {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #68AC5D, #4a8a42);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 14px;
+  transition: all 0.2s;
+}
+
+.pd-btn-manage:hover {
+  box-shadow: 0 4px 12px rgba(104, 172, 93, 0.3);
+  transform: translateY(-1px);
+}
+
+/* ── Report Link ── */
+.pd-report {
+  text-align: center;
+  margin-top: 16px;
+}
+
+.pd-report a {
+  font-size: 13px;
+  color: #ef4444;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.pd-report a:hover {
+  color: #dc2626;
+  text-decoration: underline;
+}
+
+/* ── Confirmation Modal ── */
+.pd-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: pd-fade-in 0.2s ease;
+}
+
+.pd-modal {
+  background: white;
+  border-radius: 20px;
+  padding: 32px;
+  max-width: 440px;
+  width: 92%;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.25);
+  animation: pd-modal-enter 0.3s ease;
+}
+
+@keyframes pd-modal-enter {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.pd-modal-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1f2937;
+  text-align: center;
+  margin: 0 0 4px 0;
+}
+
+.pd-modal-subtitle {
+  font-size: 13px;
+  color: #6b7280;
+  text-align: center;
+  margin: 0 0 24px 0;
+}
+
+.pd-modal-summary {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 18px;
+  border: 1px solid #f3f4f6;
+  margin-bottom: 20px;
+}
+
+.pd-modal-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+}
+
+.pd-modal-row-label {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.pd-modal-row-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.pd-modal-total {
+  border-top: 2px solid #e5e7eb;
+  padding-top: 12px;
+  margin-top: 8px;
+}
+
+.pd-modal-notice {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  font-size: 12px;
+  color: #92400e;
+  line-height: 1.5;
+}
+
+.pd-modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.pd-modal-btn {
+  padding: 13px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pd-modal-btn.cancel {
+  flex: 1;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+}
+
+.pd-modal-btn.cancel:hover {
+  background: #f3f4f6;
+}
+
+.pd-modal-btn.confirm {
+  flex: 2;
+  border: none;
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  color: white;
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.25);
+}
+
+.pd-modal-btn.confirm:hover {
+  box-shadow: 0 6px 20px rgba(22, 163, 74, 0.35);
+  transform: translateY(-1px);
+}
+
+.pd-modal-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ── Loading State ── */
+.pd-loading {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pd-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top: 3px solid #68AC5D;
+  border-radius: 50%;
+  animation: pd-spin 0.8s linear infinite;
+}
+
+@keyframes pd-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .pd-content {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 20px 16px;
   }
-  
-  #myImg:hover {opacity: 0.7;}
-  
-  /* The Modal (background) */
-  .modal {
-    display: none; /* Hidden by default */
-    position: fixed; /* Stay in place */
-    z-index: 1; /* Sit on top */
-    padding-top: 100px; /* Location of the box */
-    left: 0;
-    top: 0;
-    width: 100%; /* Full width */
-    height: 100%; /* Full height */
-    overflow: auto; /* Enable scroll if needed */
-    background-color: rgb(0,0,0); /* Fallback color */
-    background-color: rgba(0,0,0,0.9); /* Black w/ opacity */
+
+  .pd-sidebar {
+    position: static;
   }
-  
-  /* Modal Content (Image) */
-  .modal-content {
-    margin: auto;
-    display: block;
-    width: 80%;
-    max-width: 700px;
+
+  .pd-booking-card {
+    box-shadow: none;
+    border: 1px solid #e5e7eb;
   }
-  
-  /* Caption of Modal Image (Image Text) - Same Width as the Image */
-  #caption {
-    margin: auto;
-    display: block;
-    width: 80%;
-    max-width: 700px;
-    text-align: center;
-    color: #ccc;
-    padding: 10px 0;
-    height: 150px;
+
+  .pd-specs-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
-  
-  /* Add Animation - Zoom in the Modal */
-  .modal-content, #caption {
-    animation-name: zoom;
-    animation-duration: 0.6s;
+
+  .pd-title {
+    font-size: 22px;
   }
-  
-  @keyframes zoom {
-    from {transform:scale(0)}
-    to {transform:scale(1)}
+}
+
+@media (max-width: 480px) {
+  .pd-specs-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
-  
-  /* The Close Button */
-  .close {
-    position: absolute;
-    top: 15px;
-    right: 35px;
-    color: #f1f1f1;
-    font-size: 40px;
-    font-weight: bold;
-    transition: 0.3s;
+
+  .pd-trust-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
-  
-  .close:hover,
-  .close:focus {
-    color: #bbb;
-    text-decoration: none;
-    cursor: pointer;
+
+  .pd-content {
+    padding: 16px 12px;
   }
-  
-  /* 100% Image Width on Smaller Screens */
-  @media only screen and (max-width: 700px){
-    .modal-content {
-      width: 100%;
-    }
-  }
+}

@@ -15,3 +15,12 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 
 # Load task modules from all registered Django app configs.
 app.autodiscover_tasks()
+
+# ── Celery Beat Schedule ──
+# Periodic tasks that run automatically.
+app.conf.beat_schedule = {
+    "expire-stale-bookings-every-30min": {
+        "task": "booking.expire_stale_bookings",
+        "schedule": 30 * 60,  # Every 30 minutes (in seconds)
+    },
+}

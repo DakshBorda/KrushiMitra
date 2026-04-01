@@ -96,6 +96,7 @@ LOCAL_APPS = [
     "kex.equipment_type",
     "kex.booking",
     "kex.chat",
+    "kex.notifications",
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
@@ -403,6 +404,12 @@ JAZZMIN_SETTINGS = {
     "welcome_sign": "Welcome to KrushiMitra Admin Panel",
     "copyright": "KrushiMitra - Farm Equipment Rental Platform",
 
+    # Logo — displayed in sidebar header and login page
+    "site_logo": "images/logo.png",
+    "login_logo": "images/logo.png",
+    "site_logo_classes": "img-circle",
+    "site_icon": "images/logo.png",
+
     # Search
     "search_model": ["users.User", "equipment.Equipment"],
 
@@ -427,6 +434,7 @@ JAZZMIN_SETTINGS = {
         "users",
         "equipment",
         "booking",
+        "notifications",
         "brand",
         "equipment_type",
         "enquiry",
@@ -449,6 +457,7 @@ JAZZMIN_SETTINGS = {
         "enquiry.PartnerDispute": "fas fa-exclamation-triangle",
         "enquiry.CancelForm": "fas fa-times-circle",
         "enquiry.ReportEquipment": "fas fa-flag",
+        "notifications.Notification": "fas fa-bell",
         "account.EmailAddress": "fas fa-envelope",
     },
     "default_icon_parents": "fas fa-folder",

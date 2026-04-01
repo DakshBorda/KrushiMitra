@@ -37,7 +37,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
-    email = serializers.EmailField(required=False)
+    is_profile_complete = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -53,8 +53,31 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             "state",
             "pin_code",
             "profile_picture",
+            "phone_number",
+            "is_profile_complete",
         ]
-        read_only_fields = ["uuid", "id", "user_id"]
+        read_only_fields = ["uuid", "id", "user_id", "email", "phone_number", "is_profile_complete"]
+
+    def get_is_profile_complete(self, obj):
+        return obj.is_profile_complete
+
+    def validate_pin_code(self, value):
+        if value is not None:
+            pin_str = str(value)
+            if len(pin_str) != 6 or not pin_str.isdigit():
+                raise serializers.ValidationError("Pin code must be exactly 6 digits.")
+        return value
+
+    def validate_profile_picture(self, value):
+        if value:
+            # Max 5MB
+            if value.size > 5 * 1024 * 1024:
+                raise serializers.ValidationError("Profile picture must be under 5MB.")
+            # Only allow JPEG/PNG
+            content_type = getattr(value, 'content_type', '')
+            if content_type not in ['image/jpeg', 'image/png', 'image/jpg']:
+                raise serializers.ValidationError("Only JPG and PNG images are allowed.")
+        return value
 
 
 class UserSignupSerializer(serializers.ModelSerializer):

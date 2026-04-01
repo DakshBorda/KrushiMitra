@@ -13,7 +13,7 @@ class BookingFilter(filters.FilterSet):
         model = Booking
         fields = [
             "id",
-            "user",
+            "customer",
             "equipment",
             "start_time",
             "end_time",

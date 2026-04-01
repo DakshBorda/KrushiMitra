@@ -1,0 +1,3 @@
+ALL CHECKS PASS
+TERMINAL_STATUSES: ['Rejected', 'AutoRejected', 'Cancelled', 'CancelledByOwner', 'Expired', 'Completed']
+CALENDAR_BLOCKING: ['Accepted', 'Inprogress']

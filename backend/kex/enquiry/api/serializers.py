@@ -1,6 +1,6 @@
 from django.forms import ValidationError
 from rest_framework import serializers
-from kex.booking.models import Booking
+from kex.booking.models import Booking, TERMINAL_STATUSES
 from kex.enquiry.models import CancelForm, HelpCentre, PartnerDispute, ReportEquipment,FeedbackForm
 from kex.equipment.models import Equipment
 from kex.users.models import User
@@ -35,36 +35,39 @@ class CancelFormSerializer(serializers.ModelSerializer):
         model = CancelForm
         exclude = ["user"]
 
+    def validate_booking_id(self, booking_id):
+        user = self.context["user"]
+        booking = Booking.objects.filter(
+            booking_id=booking_id, customer=user
+        ).exclude(status__in=TERMINAL_STATUSES).first()
+
+        if not booking:
+            raise ValidationError(
+                "No active booking found with this ID for your account."
+            )
+
+        return booking_id
+
     def create(self, validated_data):
+        # Only store the cancellation reason — do NOT change booking status directly.
+        # The user must cancel via the booking update API which enforces the
+        # 24-hour rule and proper state machine transitions.
         cancelform = CancelForm.objects.create(
             user=self.context["user"], **validated_data
         )
-
-        booking = Booking.objects.filter(
-            booking_id=validated_data.get("booking_id"), customer=self.context["user"]
-        ).exclude(status="Cancelled")[0]
-        booking.status = "Cancelled"
-        booking.save()
-
         return cancelform
-
-    def validate_booking_id(self, booking_id):
-        if (
-            not Booking.objects.filter(
-                booking_id=booking_id, customer=self.context["user"]
-            )
-            .exclude(status="Cancelled")
-            .exists()
-        ):
-            raise ValidationError("Booking Id doesn't exists for this user")
-
-        return booking_id
 
 
 class ReportEquipmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = ReportEquipment
         exclude = ["user"]
+
+    def validate_equipment(self, equipment):
+        # Business Rule: Cannot report your own equipment
+        if equipment.owner == self.context["user"]:
+            raise ValidationError("You cannot report your own equipment.")
+        return equipment
 
     def create(self,validated_data):
 

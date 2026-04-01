@@ -1,117 +1,85 @@
 import React from "react";
 import "./Footer.css";
 import { useNavigate } from "react-router-dom";
-import logo from "../../img//logo.png";
-import Vector from "../../img//Vector.png";
-import Vector1 from "../../img//Vector1.png";
-import Vector2 from "../../img//Vector2.png";
-import footerBg from "../../img//footerBg.png";
+
+const FooterLink = ({ to, children, navigate }) => (
+  <li>
+    <button type="button" className="km-footer-link" onClick={() => navigate(to)}>
+      {children}
+    </button>
+  </li>
+);
 
 const Footer = () => {
   const navigate = useNavigate();
+  const currentYear = new Date().getFullYear();
+
   return (
-    <div className="bg-[#219653] inPhone py-20">
-      <div className="flex justify-center items-center">
-        <div className="flex-1 border-r-2 border-black-600">
-          <div
-            className="flex justify-center items-center mx-8 cursor-pointer"
-            onClick={() => navigate("/")}
-          >
-            <img src={logo} className="footerLogo" alt="" />
-            <div className="ml-4">
-              <h3 className="text-2xl text-white font-bold mt-4">
-                Krushi <br /> Mitra
-              </h3>
-              <p className="text-md font-normal text-white mt-2">
-                Kisaan upkaran ka ek Matra Mitra.
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="flex-1 px-16 border-r-2 border-black-600">
-          <div className="flex">
-            <ul className="list-none mr-24">
-              <li
-                className="text-lg text-white font-bold cursor-pointer"
-                onClick={() => navigate("/")}
-              >
-                Home
-              </li>
-              {/* <li className='text-lg text-white font-medium cursor-pointer'>Menu</li> */}
-              <li className="text-lg text-white font-medium cursor-pointer">
-                Market
-              </li>
-            </ul>
-            <ul>
-              <li
-                className="text-lg text-white font-bold cursor-pointer"
-                onClick={() => navigate("/support")}
-              >
-                Support Center
-              </li>
-              <li
-                className="text-lg text-white font-medium cursor-pointer"
-                onClick={() => navigate("/help")}
-              >
-                Help Center
-              </li>
-              <li
-                className="text-lg text-white font-medium cursor-pointer"
-                onClick={() => navigate("/partner-dispute")}
-              >
-                Partner Dispute
-              </li>
-              <li
-                className="text-lg text-white font-medium cursor-pointer"
-                onClick={() => navigate("/faq")}
-              >
-                FAQs
-              </li>
-            </ul>
-          </div>
-          <p className="text-md text-medium text-white mt-4">
-            Please provide us Feedback{" "}
-            <button
-              onClick={() => navigate("/feedback")}
-              className="text-xl underline"
-            >
-              HERE
-            </button>
+    <footer className="km-footer">
+      <div className="km-footer-inner">
+        {/* Brand */}
+        <div className="km-footer-brand">
+          <h2>KrushiMitra</h2>
+          <p>
+            Connecting farmers with equipment owners across India. Rent
+            agricultural machinery easily and affordably.
           </p>
         </div>
-        <div className="flex-1 px-16 border-r-2 border-black-600">
-          <h1 className="text-xl ml-6 text-white font-bold w-2/3">
-            Give us a follow on social media
-          </h1>
-          <div className="flex my-5 justify-left">
-            <img
-              className="socialIcons mx-3 ml-6 cursor-pointer"
-              src={Vector}
-              alt=""
-            />
-            <img
-              className="socialIcons mx-3 ml-6 cursor-pointer"
-              src={Vector1}
-              alt=""
-            />
-            <img
-              className="socialIcons mx-3 ml-6 cursor-pointer"
-              src={Vector2}
-              alt=""
-            />
-          </div>
-          {/* <p className="text-lg ml-6 text-white">
-            Made by : <strong>Team Gryffindor</strong>
-          </p> */}
+
+        {/* Navigation */}
+        <div className="km-footer-col">
+          <h3>Navigate</h3>
+          <ul>
+            <FooterLink to="/" navigate={navigate}>Home</FooterLink>
+            <FooterLink to="/dashboard" navigate={navigate}>Browse Equipment</FooterLink>
+            <FooterLink to="/booking-history" navigate={navigate}>My Bookings</FooterLink>
+            <FooterLink to="/my-equipment" navigate={navigate}>My Equipment</FooterLink>
+            <FooterLink to="/notifications" navigate={navigate}>Notifications</FooterLink>
+          </ul>
         </div>
-        <div className="flex-1 flex mr-6">
-          {/* <img src={footerBg} className="footerBgImg" alt="" /> */}
-          {/* <h1 className="text-xl text-white font-bold mt-6">
-            Ministry of Skill Development and Entrepreneurship
-          </h1> */}
+
+        {/* Support */}
+        <div className="km-footer-col">
+          <h3>Support</h3>
+          <ul>
+            <FooterLink to="/help" navigate={navigate}>Help Center</FooterLink>
+            <FooterLink to="/faq" navigate={navigate}>FAQs</FooterLink>
+            <FooterLink to="/contact" navigate={navigate}>Contact Us</FooterLink>
+            <FooterLink to="/partner-dispute" navigate={navigate}>Partner Dispute</FooterLink>
+            <FooterLink to="/feedback" navigate={navigate}>Give Feedback</FooterLink>
+          </ul>
+        </div>
+
+        {/* Legal */}
+        <div className="km-footer-col">
+          <h3>Legal</h3>
+          <ul>
+            <FooterLink to="/policy" navigate={navigate}>Cancellation Policy</FooterLink>
+          </ul>
         </div>
       </div>
-    </div>
+
+      {/* Divider + Copyright */}
+      <div className="km-footer-divider">
+        <p className="km-footer-copyright">
+          © {currentYear} <span>KrushiMitra</span>. All rights reserved.
+        </p>
+        <div className="km-footer-social">
+          <button type="button" aria-label="Facebook" className="km-footer-social-btn">
+            <i className="fa-brands fa-facebook-f"></i>
+          </button>
+          <button type="button" aria-label="Twitter" className="km-footer-social-btn">
+            <i className="fa-brands fa-twitter"></i>
+          </button>
+          <button type="button" aria-label="Instagram" className="km-footer-social-btn">
+            <i className="fa-brands fa-instagram"></i>
+          </button>
+          <button type="button" aria-label="YouTube" className="km-footer-social-btn">
+            <i className="fa-brands fa-youtube"></i>
+          </button>
+        </div>
+      </div>
+    </footer>
   );
 };
 

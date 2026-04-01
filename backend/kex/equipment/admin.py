@@ -23,6 +23,10 @@ class EquipmentAdmin(admin.ModelAdmin):
     list_per_page = 20
     readonly_fields = ["eq_id", "created_at", "image_preview_large"]
     ordering = ["-created_at"]
+    date_hierarchy = "created_at"
+
+    # ── Fix N+1: eager-load related objects ──
+    list_select_related = ["owner", "manufacturer", "equipment_type"]
 
     fieldsets = (
         ("Basic Information", {
@@ -46,8 +50,21 @@ class EquipmentAdmin(admin.ModelAdmin):
         }),
     )
 
+    # ── Bulk Actions ──
+    actions = ["mark_available", "mark_unavailable"]
+
+    @admin.action(description="Mark selected equipment as available")
+    def mark_available(self, request, queryset):
+        count = queryset.update(is_available=True)
+        self.message_user(request, f"Marked {count} equipment as available.")
+
+    @admin.action(description="Mark selected equipment as unavailable")
+    def mark_unavailable(self, request, queryset):
+        count = queryset.update(is_available=False)
+        self.message_user(request, f"Marked {count} equipment as unavailable.")
+
     def daily_rental_display(self, obj):
-        return format_html('<strong>₹{}</strong>', obj.daily_rental)
+        return format_html('<strong>₹{:,}</strong>', obj.daily_rental)
     daily_rental_display.short_description = "Daily Rate"
 
     def image_preview(self, obj):
@@ -64,21 +81,24 @@ class EquipmentAdmin(admin.ModelAdmin):
         html = ""
         for img in images:
             if img:
-                html += f'<img src="{img.url}" style="width: 120px; height: 120px; object-fit: cover; border-radius: 8px; margin-right: 10px; border: 2px solid #68AC5D;" />'
+                html += format_html(
+                    '<img src="{}" style="width: 120px; height: 120px; object-fit: cover; '
+                    'border-radius: 8px; margin-right: 10px; border: 2px solid #68AC5D;" />',
+                    img.url
+                )
         return format_html(html) if html else "No images uploaded"
     image_preview_large.short_description = "Image Preview"
-
-    class Meta:
-        model = Equipment
 
 
 @admin.register(EquipmentRating)
 class EquipmentRatingAdmin(admin.ModelAdmin):
-    list_display = ["user", "equipment", "rating_display"]
+    list_display = ["user", "equipment", "rating_display", "rating"]
     list_filter = ["rating"]
-    search_fields = ["user__username", "equipment__title"]
+    search_fields = ["user__username", "user__first_name", "equipment__title"]
+    list_per_page = 20
+    list_select_related = ["user", "equipment"]
 
     def rating_display(self, obj):
-        stars = "⭐" * obj.rating
-        return format_html('<span>{}</span>', stars)
+        stars = "★" * obj.rating + "☆" * (5 - obj.rating)
+        return format_html('<span style="color: #f59e0b; font-size: 14px;">{}</span>', stars)
     rating_display.short_description = "Rating"

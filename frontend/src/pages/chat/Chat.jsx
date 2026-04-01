@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Cookies from "js-cookie";
@@ -12,6 +12,8 @@ import {
 } from "../../api/chatAPI";
 import "./Chat.css";
 
+const MESSAGE_MAX_LENGTH = 2000;
+
 const Chat = () => {
   const [conversations, setConversations] = useState([]);
   const [activeConversation, setActiveConversation] = useState(null);
@@ -20,12 +22,17 @@ const Chat = () => {
   const [loading, setLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [chatError, setChatError] = useState("");
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const messagesEndRef = useRef(null);
+  const messagesTopRef = useRef(null);
   const wsRef = useRef(null);
   const authState = useSelector((state) => state.authReducer);
-  const currentUserId = authState?.user?.data?.id || authState?.user?.id || 0;
+  const currentUserId = authState?.user?.data?.id || authState?.user?.id || null;
 
   // Redirect if not logged in
   useEffect(() => {
@@ -39,13 +46,21 @@ const Chat = () => {
     loadConversations();
   }, []);
 
-  // Handle incoming query params (start conversation from product page)
+  // Handle incoming query params (start conversation from product/booking page)
   useEffect(() => {
     const userId = searchParams.get("userId");
     const bookingId = searchParams.get("bookingId");
+    const equipmentId = searchParams.get("equipmentId");
     if (userId) {
-      handleStartConversation(parseInt(userId, 10), bookingId ? parseInt(bookingId, 10) : null);
+      handleStartConversation(
+        parseInt(userId, 10),
+        bookingId ? parseInt(bookingId, 10) : null,
+        equipmentId ? parseInt(equipmentId, 10) : null
+      );
+      // Clear params so it doesn't re-trigger
+      window.history.replaceState({}, "", "/chat");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // Auto-scroll to bottom when messages change
@@ -62,7 +77,7 @@ const Chat = () => {
       wsRef.current.close();
     }
 
-    // Create new WebSocket
+    // Create new WebSocket with auto-reconnect
     wsRef.current = createChatWebSocket(
       activeConversation.id,
       (message) => {
@@ -76,7 +91,7 @@ const Chat = () => {
         loadConversations();
       },
       () => {
-         // WebSocket error — fall back to polling
+        // WebSocket error — polling fallback is active
         console.log("WebSocket unavailable, using polling fallback");
       }
     );
@@ -120,7 +135,15 @@ const Chat = () => {
     if (!silent) setMessagesLoading(true);
     try {
       const res = await getMessages(conversationId);
-      setMessages(res?.data || []);
+      const data = res?.data;
+      if (data?.messages) {
+        setMessages(data.messages);
+        setHasMore(data.has_more || false);
+      } else if (Array.isArray(data)) {
+        // Fallback for non-paginated response
+        setMessages(data);
+        setHasMore(false);
+      }
     } catch (err) {
       console.log("Error loading messages:", err);
     } finally {
@@ -128,8 +151,30 @@ const Chat = () => {
     }
   };
 
+  const loadOlderMessages = async () => {
+    if (!activeConversation || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const oldestId = messages.length > 0 ? messages[0].id : null;
+      const res = await getMessages(activeConversation.id, oldestId);
+      const data = res?.data;
+      if (data?.messages && data.messages.length > 0) {
+        setMessages((prev) => [...data.messages, ...prev]);
+        setHasMore(data.has_more || false);
+      } else {
+        setHasMore(false);
+      }
+    } catch (err) {
+      console.log("Error loading older messages:", err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   const handleSelectConversation = async (conversation) => {
     setActiveConversation(conversation);
+    setShowSidebar(false);
+    setChatError("");
     await loadMessages(conversation.id);
     await markAsRead(conversation.id);
     // Update unread count in sidebar
@@ -138,16 +183,20 @@ const Chat = () => {
     );
   };
 
-  const handleStartConversation = async (userId, bookingId = null) => {
+  const handleStartConversation = async (userId, bookingId = null, equipmentId = null) => {
+    setChatError("");
     try {
-      const res = await startConversation(userId, bookingId);
+      const res = await startConversation(userId, bookingId, equipmentId);
       const conversation = res?.data;
       if (conversation) {
         await loadConversations();
         setActiveConversation(conversation);
+        setShowSidebar(false);
         await loadMessages(conversation.id);
       }
     } catch (err) {
+      const errMsg = err?.response?.data?.error || "Could not start conversation.";
+      setChatError(errMsg);
       console.log("Error starting conversation:", err);
     }
   };
@@ -156,16 +205,12 @@ const Chat = () => {
     e?.preventDefault();
     const text = newMessage.trim();
     if (!text || !activeConversation || sending) return;
+    if (text.length > MESSAGE_MAX_LENGTH) return;
 
     setSending(true);
     setNewMessage("");
 
     try {
-      // Send via WebSocket if connected
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ text }));
-      }
-      // Also send via REST as backup (the consumer handles dedup)
       const res = await sendMessage(activeConversation.id, text);
       if (res?.data) {
         setMessages((prev) => {
@@ -212,6 +257,9 @@ const Chat = () => {
     return ((firstName?.[0] || "") + (lastName?.[0] || "")).toUpperCase() || "?";
   };
 
+  const charCount = newMessage.length;
+  const isOverLimit = charCount > MESSAGE_MAX_LENGTH;
+
   if (loading) {
     return (
       <div className="chat-container">
@@ -224,7 +272,7 @@ const Chat = () => {
   }
 
   return (
-    <div className="chat-container">
+    <div className={`chat-container ${showSidebar ? "show-sidebar" : ""}`}>
       {/* Sidebar — Conversation List */}
       <div className="chat-sidebar">
         <div className="chat-sidebar-header">
@@ -277,6 +325,13 @@ const Chat = () => {
 
       {/* Main Chat Area */}
       <div className="chat-main">
+        {chatError && (
+          <div className="chat-error-banner">
+            <span>⚠️ {chatError}</span>
+            <button onClick={() => setChatError("")}>✕</button>
+          </div>
+        )}
+
         {!activeConversation ? (
           <div className="chat-no-selection">
             <div className="chat-no-selection-icon">💬</div>
@@ -288,6 +343,12 @@ const Chat = () => {
             {/* Chat Header */}
             <div className="chat-main-header">
               <div className="chat-header-user">
+                <button
+                  className="chat-back-btn"
+                  onClick={() => setShowSidebar(true)}
+                >
+                  ←
+                </button>
                 <div className="chat-avatar chat-avatar-sm">
                   {getInitials(
                     activeConversation.other_user?.first_name,
@@ -311,6 +372,20 @@ const Chat = () => {
 
             {/* Messages */}
             <div className="chat-messages">
+              {/* Load older messages button */}
+              {hasMore && (
+                <div className="chat-load-more">
+                  <button
+                    onClick={loadOlderMessages}
+                    disabled={loadingMore}
+                    className="chat-load-more-btn"
+                  >
+                    {loadingMore ? "Loading..." : "↑ Load older messages"}
+                  </button>
+                </div>
+              )}
+              <div ref={messagesTopRef} />
+
               {messagesLoading ? (
                 <div className="chat-loading">
                   <div className="chat-loading-spinner"></div>
@@ -321,7 +396,7 @@ const Chat = () => {
                 </div>
               ) : (
                 messages.map((msg, idx) => {
-                  const isMine = msg.sender === currentUserId;
+                  const isMine = currentUserId ? msg.sender === currentUserId : false;
                   const showDateSep =
                     idx === 0 ||
                     new Date(msg.created_at).toDateString() !==
@@ -365,19 +440,27 @@ const Chat = () => {
 
             {/* Message Input */}
             <form className="chat-input-area" onSubmit={handleSendMessage}>
-              <textarea
-                className="chat-input"
-                placeholder="Type a message..."
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyDown={handleKeyPress}
-                rows={1}
-                disabled={sending}
-              />
+              <div className="chat-input-wrapper">
+                <textarea
+                  className={`chat-input ${isOverLimit ? "chat-input-error" : ""}`}
+                  placeholder="Type a message..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  rows={1}
+                  disabled={sending}
+                  maxLength={MESSAGE_MAX_LENGTH + 50} // Allow slight overshoot for UX
+                />
+                {charCount > 0 && (
+                  <span className={`chat-char-count ${isOverLimit ? "chat-char-over" : charCount > MESSAGE_MAX_LENGTH * 0.9 ? "chat-char-warn" : ""}`}>
+                    {charCount}/{MESSAGE_MAX_LENGTH}
+                  </span>
+                )}
+              </div>
               <button
                 type="submit"
                 className="chat-send-btn"
-                disabled={!newMessage.trim() || sending}
+                disabled={!newMessage.trim() || sending || isOverLimit}
               >
                 {sending ? "..." : "Send"}
               </button>

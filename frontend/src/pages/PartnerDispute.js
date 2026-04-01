@@ -94,7 +94,6 @@ const PartnerDispute = () => {
               <option value={20}>Commercial and product related</option>
               <option value={30}>Breach of contract related</option>
             </select>
-            -
             <textarea
               type="text"
               value={description}

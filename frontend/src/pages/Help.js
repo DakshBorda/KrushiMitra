@@ -1,40 +1,43 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 
 //Components
 import ExpandDropdown from "../components/expandText";
 
 const Help = () => {
+  const navigate = useNavigate();
+
   const booking_help = [
     {
-      heading: "Q: How do I book an equipment on KrushiMitra",
+      heading: "Q: How do I book equipment on KrushiMitra?",
       content:
-        "A: You can search and book any equipment available in your location.",
+        "A: You can search and book any equipment available in your location from the Dashboard.",
     },
     {
       heading: "Q: What happens if I return the equipment late?",
       content:
-        "A: A penalty will be applicable for th amount of time you are late.",
+        "A: A penalty may be applicable for the amount of time you are late. Please return equipment on time to avoid extra charges.",
     },
     {
       heading: "Q: How do I end my booking?",
       content:
-        "A: you can end your booking by visiting the Booking History page",
+        "A: You can end your booking by visiting the Booking History page and marking the rental as complete.",
     },
   ];
   const renting_help = [
     {
-      heading: "Q: How can I rent my equipment or implements?",
-      content: "A: You can rent out your equipment by becoming a provider.",
+      heading: "Q: How can I rent out my equipment?",
+      content: "A: You can rent out your equipment by listing it on the platform using the 'List Equipment' option in the navigation bar.",
     },
     {
-      heading: "Q: How do I refund my amount?",
+      heading: "Q: How do I receive my rental payments?",
       content:
-        "A: You can refund your payments or amount by logging to your stripe account affiliated to farmease.",
+        "A: Rental payments are managed through the platform. You can track earnings from your booking history.",
     },
     {
       heading: "Q: What types of equipment can I list for booking?",
       content:
-        "A: You can post all types of farming eqipment on KrushiMitra. For Example, Trucks, Tractors, etc.",
+        "A: You can list all types of farming equipment on KrushiMitra, including tractors, harvesters, tillers, and more.",
     },
   ];
 
@@ -42,7 +45,7 @@ const Help = () => {
     <div className="">
       <div className="bg-[#68AC5D] p-9 content-center">
         <h1 className="font-bold text-5xl text-center text-white m-8">
-          How can we Help?
+          How Can We Help?
         </h1>
       </div>
       <div className="bg-white rounded-2xl mx-auto w-11/12 p-9 -translate-y-8 flex justify-center shadow-lg">
@@ -74,7 +77,10 @@ const Help = () => {
       <div className="w-100">
         <div className="p-9 flex w-screen">
           <h1 className="text-xl mr-5 font-semibold">Still need help?</h1>
-          <button className="px-6 py-1 rounded-lg ml-auto text-white text-xl font-semibold hover:bg-green-700 bg-[#68AC5D]">
+          <button
+            onClick={() => navigate('/contact')}
+            className="px-6 py-1 rounded-lg ml-auto text-white text-xl font-semibold hover:bg-green-700 bg-[#68AC5D]"
+          >
             Contact Us
           </button>
         </div>

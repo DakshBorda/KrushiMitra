@@ -6,8 +6,10 @@ from django.db.models import Q
 
 class ChatConsumer(AsyncWebsocketConsumer):
     """
-    WebSocket consumer for real-time chat.
-    URL: ws://host/ws/chat/<conversation_id>/
+    WebSocket consumer for real-time chat — RECEIVE ONLY.
+    Messages are sent via REST API, which broadcasts to this consumer's group.
+    This consumer does NOT accept incoming messages from the client.
+    URL: ws://host/ws/chat/<conversation_id>/?token=<jwt>
     """
 
     async def connect(self):
@@ -34,37 +36,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
     async def disconnect(self, close_code):
-        # Leave the conversation group
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name,
-        )
+        # Only leave group if we successfully joined one
+        if hasattr(self, "room_group_name"):
+            await self.channel_layer.group_discard(
+                self.room_group_name,
+                self.channel_name,
+            )
 
     async def receive(self, text_data):
-        """Handle incoming WebSocket message — save to DB and broadcast."""
-        try:
-            data = json.loads(text_data)
-        except json.JSONDecodeError:
-            return
-
-        text = data.get("text", "").strip()
-        if not text:
-            return
-
-        # Save message to database
-        message_data = await self.save_message(text)
-
-        # Broadcast to the conversation group
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                "type": "chat_message",
-                "message": message_data,
-            },
-        )
+        """Ignore client-sent messages — all sending goes through REST API."""
+        pass
 
     async def chat_message(self, event):
-        """Send message to WebSocket client."""
+        """Receive broadcast from channel layer and forward to WebSocket client."""
         await self.send(text_data=json.dumps({
             "type": "new_message",
             "message": event["message"],
@@ -78,26 +62,3 @@ class ChatConsumer(AsyncWebsocketConsumer):
             Q(id=self.conversation_id),
             Q(user_1=self.user) | Q(user_2=self.user),
         ).exists()
-
-    @database_sync_to_async
-    def save_message(self, text):
-        """Save a message to the database and return serialized data."""
-        from kex.chat.models import Conversation, Message
-        conversation = Conversation.objects.get(id=self.conversation_id)
-        message = Message.objects.create(
-            conversation=conversation,
-            sender=self.user,
-            text=text,
-        )
-        # Update conversation timestamp
-        conversation.save()
-
-        return {
-            "id": message.id,
-            "conversation": conversation.id,
-            "sender": self.user.id,
-            "sender_name": f"{self.user.first_name} {self.user.last_name}".strip() or self.user.email,
-            "text": message.text,
-            "is_read": message.is_read,
-            "created_at": message.created_at.isoformat(),
-        }

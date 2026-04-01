@@ -35,6 +35,9 @@ import BookingHistory from "./pages/bookingHistory";
 import Feedback from "./pages/feedback/Feedback";
 import EquipmentReport from "./pages/EquipmentReport";
 import MyEquipment from "./pages/myEquipment/MyEquipment";
+import Notifications from "./pages/notifications/Notifications";
+import NotFound from "./pages/NotFound";
+import Footer from "./components/footer/Footer";
 
 function App() {
   const tokenState = useSelector((state) => state.tokenReducer);
@@ -97,11 +100,12 @@ function App() {
         <Route path="/policy" element={<CancellationPolicy />} />
         <Route path="/equipment-report/:id" element={<EquipmentReport />} />
         <Route path="/my-equipment" element={<MyEquipment />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route path="/feedback" element={<Feedback />} />
-        <Route path="*" element={<div>Not Found</div>} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
 
-      {/* <Footer /> */}
+      <Footer />
       <SupportEngine />
     </>
   );

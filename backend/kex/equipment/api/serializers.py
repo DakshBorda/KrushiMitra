@@ -1,6 +1,5 @@
 from django.forms import ValidationError
 from rest_framework.serializers import (
-    HyperlinkedIdentityField,
     ModelSerializer,
     SerializerMethodField,
 )
@@ -13,7 +12,7 @@ from kex.brand.api.serializers import BrandSerializer
 
 class EquipmentListSerializer(ModelSerializer):
     image = SerializerMethodField()
-    url = HyperlinkedIdentityField(view_name="equipment-api:detail", lookup_field="eq_id")
+    url = SerializerMethodField()
     manufacturer = SerializerMethodField()
 
     class Meta:
@@ -22,6 +21,7 @@ class EquipmentListSerializer(ModelSerializer):
             "id",
             "eq_id",
             "url",
+            "owner",
             "manufacturer",
             "title",
             "image",
@@ -33,10 +33,31 @@ class EquipmentListSerializer(ModelSerializer):
             "condition",
             "available_start_time",
             "available_end_time",
+            "description",
+            "manufacturing_year",
+            "model",
+            "horsepower",
+            "width",
+            "height",
+            "weight",
+            "show_phone_number",
         ]
 
+    def get_url(self, obj):
+        """Build equipment detail URL — safe for nested serializer contexts."""
+        request = self.context.get('request')
+        if request and obj.eq_id:
+            try:
+                from rest_framework.reverse import reverse
+                return reverse('equipment-api:detail', kwargs={'eq_id': obj.eq_id}, request=request)
+            except Exception:
+                pass
+        return None
+
     def get_manufacturer(self, obj):
-        return obj.manufacturer.name
+        if obj.manufacturer:
+            return obj.manufacturer.name
+        return None
 
     def get_image(self, obj):
         try:
@@ -50,7 +71,7 @@ class EquipmentListSerializer(ModelSerializer):
 
 
 class EquipmentDetailSerializer(ModelSerializer):
-    url = HyperlinkedIdentityField(view_name="equipment-api:detail", lookup_field="eq_id")
+    url = SerializerMethodField()
     # owner = UserSerializer(read_only=True)
     owner = SerializerMethodField()
     image_1 = SerializerMethodField()
@@ -60,6 +81,7 @@ class EquipmentDetailSerializer(ModelSerializer):
     image_5 = SerializerMethodField()
     manufacturer = SerializerMethodField()
     equipment_type = EquipmentTypeListSerializer(read_only=True)
+    is_owner = SerializerMethodField()
 
     class Meta:
         model = Equipment
@@ -67,6 +89,7 @@ class EquipmentDetailSerializer(ModelSerializer):
             "id",
             "url",
             "owner",
+            "is_owner",
             "manufacturer",
             "title",
             "description",
@@ -93,8 +116,20 @@ class EquipmentDetailSerializer(ModelSerializer):
             "created_at",
         ]
 
+    def get_url(self, obj):
+        request = self.context.get('request')
+        if request and obj.eq_id:
+            try:
+                from rest_framework.reverse import reverse
+                return reverse('equipment-api:detail', kwargs={'eq_id': obj.eq_id}, request=request)
+            except Exception:
+                pass
+        return None
+
     def get_manufacturer(self, obj):
-        return obj.manufacturer.name
+        if obj.manufacturer:
+            return obj.manufacturer.name
+        return None
 
     def get_image_1(self, obj):
         try:
@@ -162,6 +197,13 @@ class EquipmentDetailSerializer(ModelSerializer):
 
         return detail
 
+    def get_is_owner(self, obj):
+        """Returns True if the requesting user is the owner of this equipment."""
+        request = self.context.get("request")
+        if request and request.user and request.user.is_authenticated:
+            return obj.owner == request.user
+        return False
+
 
 class EquipmentCreateSerializer(ModelSerializer):
 
@@ -196,7 +238,6 @@ class EquipmentCreateSerializer(ModelSerializer):
             "created_at",
         ]
         extra_kwargs = {
-            # owner should always come from the authenticated user, not from the client
             "owner": {"required": False},
             "image_1": {"required": False},
             "image_2": {"required": False},
@@ -204,6 +245,85 @@ class EquipmentCreateSerializer(ModelSerializer):
             "image_4": {"required": False},
             "image_5": {"required": False},
         }
+
+    def validate_title(self, value):
+        if len(value.strip()) < 3:
+            raise ValidationError("Title must be at least 3 characters.")
+        if len(value.strip()) > 200:
+            raise ValidationError("Title must be under 200 characters.")
+        return value.strip()
+
+    def validate_description(self, value):
+        if len(value.strip()) < 10:
+            raise ValidationError("Description must be at least 10 characters.")
+        return value.strip()
+
+    def validate_manufacturing_year(self, value):
+        from datetime import datetime
+        current_year = datetime.now().year
+        if value and (value < 1950 or value > current_year):
+            raise ValidationError(f"Manufacturing year must be between 1950 and {current_year}.")
+        return value
+
+    def _validate_image_file(self, value):
+        """Shared image validation: max 5MB, JPG/PNG only."""
+        if value:
+            if value.size > 5 * 1024 * 1024:
+                raise ValidationError("Image must be under 5MB.")
+            content_type = getattr(value, 'content_type', '')
+            if content_type and content_type not in ['image/jpeg', 'image/png', 'image/jpg']:
+                raise ValidationError("Only JPG and PNG images are allowed.")
+        return value
+
+    def validate_image_1(self, value):
+        return self._validate_image_file(value)
+
+    def validate_image_2(self, value):
+        return self._validate_image_file(value)
+
+    def validate_image_3(self, value):
+        return self._validate_image_file(value)
+
+    def validate_image_4(self, value):
+        return self._validate_image_file(value)
+
+    def validate_image_5(self, value):
+        return self._validate_image_file(value)
+
+    def validate(self, data):
+        is_partial = self.instance is not None and getattr(self, 'partial', False)
+
+        # ── Rental price validation ──
+        # On partial update: only validate if rental fields are being changed
+        # On creation: always validate
+        if not is_partial or 'daily_rental' in data or 'hourly_rental' in data:
+            if is_partial:
+                daily = data.get("daily_rental", getattr(self.instance, 'daily_rental', 0)) or 0
+                hourly = data.get("hourly_rental", getattr(self.instance, 'hourly_rental', 0)) or 0
+            else:
+                daily = data.get("daily_rental", 0) or 0
+                hourly = data.get("hourly_rental", 0) or 0
+            if daily <= 0 and hourly <= 0:
+                raise ValidationError({"daily_rental": "At least one rental price (daily or hourly) must be greater than ₹0."})
+
+        # ── Date validation ──
+        # On partial update: only validate if date fields are being changed
+        if not is_partial or 'available_start_time' in data or 'available_end_time' in data:
+            if is_partial:
+                start = data.get("available_start_time", getattr(self.instance, 'available_start_time', None))
+                end = data.get("available_end_time", getattr(self.instance, 'available_end_time', None))
+            else:
+                start = data.get("available_start_time")
+                end = data.get("available_end_time")
+            if start and end and end <= start:
+                raise ValidationError({"available_end_time": "End date must be after start date."})
+
+        # ── Image validation — only on creation ──
+        if not self.instance:
+            if not data.get("image_1"):
+                raise ValidationError({"image_1": "At least one equipment image is required."})
+
+        return data
 
 
 class EquipmentRatingSerializer(ModelSerializer):
@@ -213,6 +333,10 @@ class EquipmentRatingSerializer(ModelSerializer):
         read_only_fields = ["user"]
 
     def validate_equipment(self, equipment):
+        # Business Rule: Cannot rate your own equipment
+        if equipment.owner == self.context["user"]:
+            raise ValidationError("You cannot rate your own equipment.")
+
         if not Booking.objects.filter(
             customer=self.context["user"], status="Completed", equipment=equipment
         ).exists():

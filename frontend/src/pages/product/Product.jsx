@@ -1,245 +1,558 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import './Product.css';
 import "react-responsive-carousel/lib/styles/carousel.min.css";
 import { Carousel } from "react-responsive-carousel";
-import 'react-date-range/dist/styles.css'; // main style file
-import 'react-date-range/dist/theme/default.css'; // theme css file
+import 'react-date-range/dist/styles.css';
+import 'react-date-range/dist/theme/default.css';
 import { DateRangePicker } from 'react-date-range';
 import { getEquip } from '../../api/equipments';
-import { createBooking } from '../../api/bookingAPI';
+import { createBooking, getOwnerStats, getBlockedDates } from '../../api/bookingAPI';
 import { useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
-import instance from '../../api/config';
+import { useSelector } from 'react-redux';
 import Cookies from "js-cookie";
 
+// ── Error extraction utility — handles all DRF ValidationError shapes ──
+const extractErrorMsg = (err) => {
+    const d = err?.response?.data;
+    if (!d) return 'Something went wrong. Please try again.';
+    if (typeof d === 'string') return d;
+    if (Array.isArray(d)) return d[0];
+    if (d.message) return Array.isArray(d.message) ? d.message[0] : d.message;
+    if (d.non_field_errors) return Array.isArray(d.non_field_errors) ? d.non_field_errors[0] : d.non_field_errors;
+    if (d.detail) return d.detail;
+    // Flatten first key's first error
+    const firstKey = Object.keys(d).find(k => k !== 'status');
+    if (firstKey && d[firstKey]) {
+        const val = d[firstKey];
+        return Array.isArray(val) ? val[0] : val;
+    }
+    return 'Booking failed. Please try again.';
+};
+
 const Product = () => {
-    const [visible, setVisible] = useState(false);
+    const [calendarOpen, setCalendarOpen] = useState(false);
     const [startDate, setStartDate] = useState(new Date());
     const [endDate, setEndDate] = useState(new Date());
+    const [datesSelected, setDatesSelected] = useState(false); // ← KEY: tracks if user actually picked dates
     const [equipment, setEquipment] = useState(null);
-    const [invalidDate, setInvalidDate] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [blockedRanges, setBlockedRanges] = useState([]);
+    const [bookingError, setBookingError] = useState('');
+    const [ownerStats, setOwnerStats] = useState(null);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [bookingInProgress, setBookingInProgress] = useState(false);
     const params = useParams();
     const navigate = useNavigate();
+    const authState = useSelector((state) => state.authReducer);
+    const currentUserId = authState?.user?.data?.id || authState?.user?.id || null;
+
+    const isOwner = equipment?.is_owner === true ||
+        (currentUserId && equipment?.owner?.id === currentUserId);
 
     useEffect(() => {
-        const getEquipment = async () => {
-            const { data } = await getEquip(params.eqId);
-            setEquipment(data);
-            // console.log(data);
-        }
-        getEquipment();
-    }, [params.eqId])
+        setLoading(true);
+        getEquip(params.eqId)
+            .then(res => setEquipment(res?.data))
+            .catch(err => console.log('Error loading equipment:', err))
+            .finally(() => setLoading(false));
+    }, [params.eqId]);
 
+    // Fetch owner metrics + blocked dates when equipment loads
+    useEffect(() => {
+        if (equipment?.owner?.id) {
+            getOwnerStats(equipment.owner.id).then(res => {
+                if (res?.data) setOwnerStats(res.data);
+            });
+        }
+        if (equipment?.id) fetchBlockedDates();
+    }, [equipment?.owner?.id, equipment?.id]);
 
     const handleSelect = (ranges) => {
         setStartDate(ranges.selection.startDate);
         setEndDate(ranges.selection.endDate);
-    }
+        setDatesSelected(true); // ← User interacted with calendar
+        setBookingError('');
+    };
 
-    const selectionRange = {
-        startDate: startDate,
-        endDate: endDate,
-        key: 'selection'
-    }
-
+    const selectionRange = { startDate, endDate, key: 'selection' };
     const formattedStartDate = format(new Date(startDate), "yyyy-MM-dd");
     const formattedEndDate = format(new Date(endDate), "yyyy-MM-dd");
-    // const formattedStartTime = format(new Date(startDate), "hh-mm-dd");
-    // console.log(formattedStartDate, "format start date");
 
-    // const bookingData = {
-    //     equipment: equipment?.id,
-    //     start_data: formattedStartDate,
-    //     end_date: formattedEndDate,
-    //     start_time: '22:22',
-    //     end_time: '01:01'
-    // }
+    const fetchBlockedDates = async () => {
+        if (!equipment?.id) return;
+        try {
+            const res = await getBlockedDates(equipment.id);
+            setBlockedRanges(res?.data || []);
+        } catch (err) { console.log("Error fetching blocked dates:", err); }
+    };
 
-    const handleBooking = async () => {
-        if (!Cookies.get('access-token')) {
-            navigate('/login');
+    const disabledDates = useMemo(() => {
+        const dates = [];
+        blockedRanges.forEach(range => {
+            const start = new Date(range.start_date);
+            const end = new Date(range.end_date);
+            for (let dt = new Date(start); dt <= end; dt.setDate(dt.getDate() + 1)) {
+                dates.push(new Date(dt));
+            }
+        });
+        return dates;
+    }, [blockedRanges]);
+
+    // Cost calculations
+    const numberOfDays = useMemo(() => {
+        if (!datesSelected) return 0;
+        const diffTime = Math.abs(new Date(endDate) - new Date(startDate));
+        return Math.max(Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1, 1);
+    }, [startDate, endDate, datesSelected]);
+
+    const estimatedCost = useMemo(() => {
+        if (!equipment?.daily_rental || !datesSelected) return 0;
+        return numberOfDays * equipment.daily_rental;
+    }, [numberOfDays, equipment?.daily_rental, datesSelected]);
+
+    // Can the user book?
+    const canBook = datesSelected && equipment?.is_available && Cookies.get('access-token');
+
+    const handleBookingClick = () => {
+        setBookingError('');
+        if (!Cookies.get('access-token')) { navigate('/login'); return; }
+        if (!datesSelected) {
+            setBookingError('Please select your booking dates first.');
             return;
         }
-        await createBooking(equipment?.id, formattedStartDate, formattedEndDate, "22:22", "01:01");
-        navigate('/booking-history');
-    }
-    var getDaysArray = function (start, end) {
-        for (var arr = [], dt = new Date(start); dt <= new Date(end); dt.setDate(dt.getDate() + 1)) {
-            arr.push(new Date(dt));
+        if (!equipment?.is_available) {
+            setBookingError('This equipment is currently unavailable.');
+            return;
         }
-        return arr;
-    };
-    var arr = [];
-
-    const fetchInvalid = () => {
-        const getBookingVadidity = async () => {
-            const headers = {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${Cookies.get('access-token')}`
-            };
-            const { data } = await instance.get(`/api/booking/?search=${equipment?.title}&ordering=start_date`, { headers });
-            console.log(data, 'invalid dates');
-            setInvalidDate(data);
-        }
-        getBookingVadidity();
-
+        setShowConfirmModal(true);
     };
 
-    invalidDate?.map(booking => (
-        getDaysArray(booking.start_date, booking.end_date)?.map(item => (
-            arr.push(item)
-        ))
-
-    ))
+    const handleConfirmBooking = async () => {
+        setBookingError('');
+        setBookingInProgress(true);
+        try {
+            await createBooking(equipment?.id, formattedStartDate, formattedEndDate);
+            setShowConfirmModal(false);
+            navigate('/booking-history');
+        } catch (err) {
+            setBookingError(extractErrorMsg(err));
+            setShowConfirmModal(false);
+        } finally {
+            setBookingInProgress(false);
+        }
+    };
 
     const startChat = () => {
-        if (equipment?.owner?.id) {
-            navigate(`/chat?userId=${equipment.owner.id}`);
-        } else {
-            navigate('/chat');
-        }
+        if (equipment?.owner?.id) navigate(`/chat?userId=${equipment.owner.id}&equipmentId=${equipment.id}`);
+        else navigate('/chat');
+    };
+
+    const images = [equipment?.image_1, equipment?.image_2, equipment?.image_3, equipment?.image_4, equipment?.image_5].filter(Boolean);
+    const ownerInitial = equipment?.owner?.first_name?.[0]?.toUpperCase() || '?';
+
+    if (loading) {
+        return (
+            <div className="pd-page">
+                <div className="pd-loading">
+                    <div className="pd-loading-spinner"></div>
+                    <p style={{ color: '#9ca3af', fontWeight: 500 }}>Loading equipment...</p>
+                </div>
+            </div>
+        );
     }
 
-
-
+    if (!equipment) {
+        return (
+            <div className="pd-page">
+                <div className="pd-loading">
+                    <i className="fa-solid fa-magnifying-glass" style={{ fontSize: '48px', color: '#d1d5db', marginBottom: '16px', display: 'block' }}></i>
+                    <p style={{ color: '#374151', fontSize: '18px', fontWeight: 700 }}>Equipment not found</p>
+                    <button onClick={() => navigate('/dashboard')} className="pd-btn-manage" style={{ marginTop: '16px' }}>
+                        Browse Equipment
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className=''>
-            <div className='productHero'>
-                <Carousel
-                    autoplay={true}
-                    infiniteLoop={true}
-                    showStatus={false}
-                    showIndicators={false}
-                    showThumbs={false}
-                    interval={3000}
-                    // width="100%"
-                    dynamicHeight="100%"
-                >
-                    {[equipment?.image_1, equipment?.image_2, equipment?.image_3, equipment?.image_4, equipment?.image_5]
-                        .filter(img => img != null)
-                        .map((img, idx) => (
-                            <div key={idx} className="relative">
-                                <img style={{ height: '300px', width: '800px', objectFit: 'contain' }} src={img} alt={`Equipment ${idx + 1}`} />
+        <div className="pd-page">
+            {/* Banners */}
+            {isOwner && (
+                <div className="pd-banner owner">
+                    This is your equipment — viewing as it appears to farmers
+                </div>
+            )}
+            {!isOwner && !equipment.is_available && (
+                <div className="pd-banner unavailable">
+                    This equipment is currently unavailable for booking
+                </div>
+            )}
+
+            {/* Image Gallery */}
+            {images.length > 0 && (
+                <div className="pd-gallery">
+                    <Carousel
+                        autoPlay infiniteLoop showStatus={false}
+                        showIndicators={images.length > 1} showThumbs={images.length > 1}
+                        interval={4000} thumbWidth={80}
+                    >
+                        {images.map((img, idx) => (
+                            <div key={idx}>
+                                <img style={{ maxHeight: '420px', objectFit: 'contain' }}
+                                    src={img} alt={`${equipment.title} ${idx + 1}`} />
                             </div>
-                        ))
-                    }
-                </Carousel>
-            </div>
+                        ))}
+                    </Carousel>
+                </div>
+            )}
 
-            <div className='flex justify-around max-w-7xl mx-auto mt-12'>
-                <div className='flex-1 w-56'>
-                    <div className='flex justify-between border-b-2 pb-6 items-center'>
+            {/* Main Content */}
+            <div className="pd-content">
+                {/* LEFT: Details */}
+                <div className="pd-main">
+                    <div className="pd-header">
                         <div>
-                            <h3 className='text-lg text-gray-500 font-bold'>{equipment?.manufacturer}</h3>
-                            <h1 className='text-xl text-gray-800 font-bold'>{equipment?.title}</h1>
-                        </div>
-                        <div>
-                            <i className="text-red-500 fa-solid fa-thumbs-up ml-1.5 text-xl"></i>
-                            <p className='text-red-500 text-xs'>Add to Wishlist</p>
-                        </div>
-                    </div>
-                    <div className='py-6 border-b-2'>
-                        <h1 className='text-lg font-bold text-gray-800'>Description</h1>
-                        <p className='text-sm font-bold text-gray-500 pt-2'>{equipment?.description}</p>
-                    </div>
-
-                    <h1 className='py-3 text-lg text-gray-700 font-bold'>Specifications</h1>
-                    <div className='flex justify-between border-b-2 pb-6 items-center'>
-                        <div>
-                            <h3 className='text-md text-gray-500 font-bold'>Manufacturer</h3>
-                            <h1 className='text-sm text-gray-500 font-semibold'>{equipment?.manufacturer}</h1>
-                        </div>
-                        <div>
-                            <h3 className='text-md text-gray-500 font-bold'>Model</h3>
-                            <h1 className='text-sm text-gray-500 font-semibold'>{equipment?.model}</h1>
-                        </div>
-                        <div>
-                            <h3 className='text-md text-gray-500 font-bold'>Manufacturing Year</h3>
-                            <h1 className='text-sm text-gray-500 font-semibold'>{equipment?.manufacturing_year}</h1>
+                            <h1 className="pd-title">{equipment.title}</h1>
+                            <div className="pd-subtitle">
+                                <span>{equipment.manufacturer}</span>
+                                {equipment.condition && (
+                                    <>
+                                        <span>•</span>
+                                        <span className="pd-condition-badge">
+                                            {equipment.condition}
+                                        </span>
+                                    </>
+                                )}
+                                {equipment.equipment_location && (
+                                    <>
+                                        <span>•</span>
+                                        <span>{equipment.equipment_location}</span>
+                                    </>
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    <div className='flex justify-between border-b-2 py-6 items-center'>
-                        <div>
-                            <h3 className='text-md text-gray-500 font-bold'>Width</h3>
-                            <h1 className='text-sm text-gray-500 font-semibold'>{equipment?.width}</h1>
+                    {/* Description */}
+                    {equipment.description && (
+                        <div className="pd-section">
+                            <h2 className="pd-section-title">
+                                <i className="fa-solid fa-file-lines"></i> About This Equipment
+                            </h2>
+                            <p className="pd-description">{equipment.description}</p>
                         </div>
-                        <div>
-                            <h3 className='text-md text-gray-500 font-bold'>Weight</h3>
-                            <h1 className='text-sm text-gray-500 font-semibold'>{equipment?.weight} lbs.</h1>
-                        </div>
-                        <div>
-                            <h3 className='text-md text-gray-500 font-bold'>Condition</h3>
-                            <h1 className='text-sm text-gray-500 font-semibold'>{equipment?.condition}</h1>
-                        </div>
-                        <div>
-                            <h3 className='text-md text-gray-500 font-bold'>Horsepower</h3>
-                            <h1 className='text-sm text-gray-500 font-semibold'>{equipment?.horsepower} HP</h1>
+                    )}
+
+                    {/* Specifications */}
+                    <div className="pd-section">
+                        <h2 className="pd-section-title">
+                            <i className="fa-solid fa-gears"></i> Specifications
+                        </h2>
+                        <div className="pd-specs-grid">
+                            {equipment.manufacturer ? (
+                                <div className="pd-spec-card">
+                                    <span className="pd-spec-icon"><i className="fa-solid fa-industry"></i></span>
+                                    <div className="pd-spec-value">{equipment.manufacturer}</div>
+                                    <div className="pd-spec-label">Manufacturer</div>
+                                </div>
+                            ) : null}
+                            {equipment.model ? (
+                                <div className="pd-spec-card">
+                                    <span className="pd-spec-icon"><i className="fa-solid fa-clipboard"></i></span>
+                                    <div className="pd-spec-value">{equipment.model}</div>
+                                    <div className="pd-spec-label">Model</div>
+                                </div>
+                            ) : null}
+                            {equipment.manufacturing_year ? (
+                                <div className="pd-spec-card">
+                                    <span className="pd-spec-icon"><i className="fa-solid fa-calendar"></i></span>
+                                    <div className="pd-spec-value">{equipment.manufacturing_year}</div>
+                                    <div className="pd-spec-label">Year</div>
+                                </div>
+                            ) : null}
+                            {equipment.horsepower ? (
+                                <div className="pd-spec-card">
+                                    <span className="pd-spec-icon"><i className="fa-solid fa-bolt"></i></span>
+                                    <div className="pd-spec-value">{equipment.horsepower} HP</div>
+                                    <div className="pd-spec-label">Horsepower</div>
+                                </div>
+                            ) : null}
+                            {equipment.weight ? (
+                                <div className="pd-spec-card">
+                                    <span className="pd-spec-icon"><i className="fa-solid fa-weight-hanging"></i></span>
+                                    <div className="pd-spec-value">{equipment.weight} kg</div>
+                                    <div className="pd-spec-label">Weight</div>
+                                </div>
+                            ) : null}
+                            {equipment.width ? (
+                                <div className="pd-spec-card">
+                                    <span className="pd-spec-icon"><i className="fa-solid fa-ruler-horizontal"></i></span>
+                                    <div className="pd-spec-value">{equipment.width}</div>
+                                    <div className="pd-spec-label">Width</div>
+                                </div>
+                            ) : null}
+                            {equipment.height ? (
+                                <div className="pd-spec-card">
+                                    <span className="pd-spec-icon"><i className="fa-solid fa-ruler-vertical"></i></span>
+                                    <div className="pd-spec-value">{equipment.height}</div>
+                                    <div className="pd-spec-label">Height</div>
+                                </div>
+                            ) : null}
                         </div>
                     </div>
 
-                    <div className='py-6 flex justify-center border-b-2'>
-                        <a href="/update-profile" className='font-semibold text-sm text-green-700'>Know Your Provider <i className="pl-1 fa-solid fa-angle-right"></i></a>
+                    {/* Owner / Provider */}
+                    <div className="pd-section">
+                        <h2 className="pd-section-title">
+                            <i className="fa-solid fa-shield-halved"></i> Equipment Provider
+                        </h2>
+                        <div className="pd-owner-trust">
+                            <div className="pd-owner-header">
+                                <div className="pd-owner-avatar">{ownerInitial}</div>
+                                <div>
+                                    <div className="pd-owner-name">
+                                        {equipment.owner?.first_name} {equipment.owner?.last_name}
+                                    </div>
+                                    <div className="pd-owner-joined">
+                                        {equipment.equipment_location && equipment.equipment_location}
+                                        {equipment.owner?.phone_number && equipment.show_phone_number && (
+                                            <span style={{ marginLeft: '12px' }}>{equipment.owner.phone_number}</span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            {ownerStats && ownerStats.total_bookings_received > 0 && (
+                                <div className="pd-trust-grid">
+                                    <div className="pd-trust-item">
+                                        <div className="pd-trust-value">
+                                            {ownerStats.avg_response_hours != null ? `${ownerStats.avg_response_hours}h` : '—'}
+                                        </div>
+                                        <div className="pd-trust-label">
+                                            {ownerStats.avg_response_hours != null && ownerStats.avg_response_hours <= 4
+                                                ? 'Fast Responder' : 'Avg Response'}
+                                        </div>
+                                    </div>
+                                    <div className="pd-trust-item">
+                                        <div className="pd-trust-value">{ownerStats.response_rate}%</div>
+                                        <div className="pd-trust-label">Response Rate</div>
+                                    </div>
+                                    <div className="pd-trust-item">
+                                        <div className="pd-trust-value">{ownerStats.completion_rate}%</div>
+                                        <div className="pd-trust-label">Completion</div>
+                                    </div>
+                                    <div className="pd-trust-item">
+                                        <div className="pd-trust-value">{ownerStats.total_bookings_received}</div>
+                                        <div className="pd-trust-label">Bookings</div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    <div className='border-b-2 mb-10 py-6'>
-                        <h1 className='text-lg font-bold text-gray-900'>Cancellation Policy</h1>
-                        <p className='text-sm py-2 font-semibold text-gray-800'>Moderate</p>
-                        <p className='text-sm font-semibold text-gray-800 pb-2'>Cancel up to 24 hours before booking and get a full refund.</p>
-                        <a href="/policy" className='font-semibold text-sm text-blue-500'>Read more about the policy <i className="pl-1 fa-solid fa-angle-right"></i></a>
+                    {/* Cancellation Policy */}
+                    <div className="pd-section">
+                        <h2 className="pd-section-title">
+                            <i className="fa-solid fa-rotate-left"></i> Cancellation Policy
+                        </h2>
+                        <div className="pd-policy">
+                            <div className="pd-policy-type">
+                                <i className="fa-solid fa-info-circle"></i> Moderate
+                            </div>
+                            <p className="pd-policy-text">
+                                Cancel at least <strong>24 hours</strong> before the booking start date for a full refund.
+                                Late cancellations may not be eligible. The owner has <strong>48 hours</strong> to respond to your request.
+                            </p>
+                        </div>
                     </div>
-
                 </div>
 
-                <div className='flex-1 w-32'>
-                    <div className='border p-8 m-10'>
-                        <h1 className='text-right text-lg font-bold border-b-2 pb-3'>Rs {equipment?.daily_rental} per day</h1>
-                        <button onClick={() => { setVisible(!visible); fetchInvalid() }} className='px-3 py-1 border my-4 w-full text-md font-semibold text-gray-800 cursor-pointer'>Check Availability <i className="pl-2 fa-solid fa-angles-down"></i></button>
-                        <div style={{ display: !visible && 'none' }}>
-                            <DateRangePicker style={{ height: '300px', width: '280px' }}
-                                ranges={[selectionRange]}
-                                minDate={new Date()}
-                                // disabledDates={getDaysArray(invalidDate[1]?.start_date,invalidDate[1]?.end_date)}
-                                disabledDates={arr}
-                                rangeColors={["#68AC5D"]}
-                                onChange={handleSelect}
-                            // maxDate={new Date()}
-                            />
+                {/* RIGHT: Booking Sidebar */}
+                <div className="pd-sidebar">
+                    <div className="pd-booking-card">
+                        <div className="pd-price-header">
+                            <span className="pd-price-amount">₹{equipment.daily_rental}</span>
+                            <span className="pd-price-unit">/ day</span>
+                            <span className={`pd-availability-badge ${equipment.is_available ? 'available' : 'unavailable'}`}>
+                                {equipment.is_available ? '● Available' : '● Unavailable'}
+                            </span>
                         </div>
-                        {
-                            Cookies.get('access-token') ? (
-                                <button onClick={(e) => handleBooking(e)} className="bg-darkgreen hover:bg-[#8cdf80] text-white w-full font-semibold py-1 px-8 rounded">
-                                    Book Now
-                                </button>
-                            ) : (
-                                <button onClick={() => navigate('/login')} className="bg-darkgreen opacity-50 cursor-not-allowed hover:bg-[#8cdf80] text-white w-full font-semibold py-1 px-8 rounded">
-                                    Login to Book
-                                </button>
-                            )
-                        }
 
-
-                        <p className='text-md font-bold text-gray-500 text-center pt-4 pb-8 border-b-2'>You won’t be charged yet</p>
-
-                        {
-                            Cookies.get('access-token') ? (
-                                <button onClick={() => startChat()} className="bg-[#68AC5D] hover:bg-[#5a9c4f] mt-8 text-white w-full font-semibold py-2 px-8 rounded transition">
-                                    Chat with Owner <i className="pl-4 fa-solid fa-comment"></i>
+                        {isOwner ? (
+                            <div>
+                                <div className="pd-owner-card">
+                                    <p style={{ color: '#16a34a', fontWeight: 700, fontSize: '15px' }}>Your Equipment</p>
+                                    <p style={{ color: '#6b7280', fontSize: '12px', marginTop: '4px' }}>You cannot book your own listing</p>
+                                </div>
+                                <button onClick={() => navigate('/my-equipment')} className="pd-btn-manage">
+                                    Manage in My Equipment
                                 </button>
-                            ) : (
-                                <button onClick={() => navigate('/login')} className="bg-[#68AC5D] opacity-50 cursor-not-allowed mt-8 text-white w-full font-semibold py-2 px-8 rounded">
-                                    Login to Chat <i className="pl-4 fa-solid fa-comment"></i>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Step 1: Select Dates */}
+                                <button
+                                    className={`pd-cal-toggle ${calendarOpen ? 'open' : ''}`}
+                                    onClick={() => setCalendarOpen(!calendarOpen)}
+                                >
+                                    <span>
+                                        <i className="fa-solid fa-calendar-days" style={{ marginRight: '8px' }}></i>
+                                        {datesSelected
+                                            ? `${formattedStartDate} → ${formattedEndDate}`
+                                            : 'Step 1: Select Dates'}
+                                    </span>
+                                    <i className={`fa-solid fa-chevron-${calendarOpen ? 'up' : 'down'}`}></i>
                                 </button>
-                            )
-                        }
 
+                                {calendarOpen && (
+                                    <div className="pd-cal-wrap">
+                                        <DateRangePicker
+                                            ranges={[selectionRange]}
+                                            minDate={(() => { const d = new Date(); d.setDate(d.getDate() + 1); return d; })()}
+                                            disabledDates={disabledDates}
+                                            rangeColors={["#68AC5D"]}
+                                            onChange={handleSelect}
+                                            months={1}
+                                            direction="vertical"
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Cost Preview — only after dates selected */}
+                                {datesSelected && (
+                                    <div className="pd-cost-preview">
+                                        <div className="pd-cost-row">
+                                            <span className="pd-cost-label">
+                                                ₹{equipment.daily_rental} × {numberOfDays} day{numberOfDays > 1 ? 's' : ''}
+                                            </span>
+                                            <span className="pd-cost-value">
+                                                ₹{estimatedCost.toLocaleString('en-IN')}
+                                            </span>
+                                        </div>
+                                        <hr className="pd-cost-divider" />
+                                        <div className="pd-cost-row">
+                                            <span className="pd-cost-total-label">Estimated Total</span>
+                                            <span className="pd-cost-total-value">₹{estimatedCost.toLocaleString('en-IN')}</span>
+                                        </div>
+                                        <p className="pd-cost-dates">{formattedStartDate} → {formattedEndDate}</p>
+                                    </div>
+                                )}
+
+                                {/* Prompt to select dates if not done */}
+                                {!datesSelected && !calendarOpen && (
+                                    <div style={{
+                                        background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px',
+                                        padding: '12px 16px', marginBottom: '12px', textAlign: 'center',
+                                    }}>
+                                        <p style={{ fontSize: '13px', color: '#92400e', margin: 0, fontWeight: 600 }}>
+                                            Please select your dates above to proceed
+                                        </p>
+                                    </div>
+                                )}
+
+                                {bookingError && <div className="pd-error">{bookingError}</div>}
+
+                                {/* Book Now — DISABLED until dates selected */}
+                                {Cookies.get('access-token') ? (
+                                    <button
+                                        className={`pd-btn-book ${canBook ? 'primary' : 'disabled'}`}
+                                        onClick={handleBookingClick}
+                                        disabled={!canBook}
+                                    >
+                                        {!equipment.is_available
+                                            ? 'Currently Unavailable'
+                                            : !datesSelected
+                                                ? 'Select Dates to Book'
+                                                : 'Book Now'}
+                                    </button>
+                                ) : (
+                                    <button className="pd-btn-book login" onClick={() => navigate('/login')}>
+                                        Login to Book
+                                    </button>
+                                )}
+
+                                <p className="pd-no-charge">You won't be charged until the owner accepts</p>
+
+                                {/* Chat */}
+                                {Cookies.get('access-token') ? (
+                                    <button className="pd-btn-chat" onClick={startChat}>
+                                        <i className="fa-solid fa-comment"></i> Chat with Owner
+                                    </button>
+                                ) : (
+                                    <button className="pd-btn-chat" onClick={() => navigate('/login')} style={{ opacity: 0.6 }}>
+                                        <i className="fa-solid fa-comment"></i> Login to Chat
+                                    </button>
+                                )}
+                            </>
+                        )}
                     </div>
-                    <p className='text-center'><i className="pr-2 text-red-500 fa-solid fa-flag"></i> <a className='text-red-500 font-semibold text-md underline-offset-2 cursor-pointer' onClick={() => navigate(`/equipment-report/${equipment?.eq_id || equipment?.id}`)}>Report this equipment</a></p>
+
+                    {!isOwner && (
+                        <div className="pd-report">
+                            <a onClick={() => navigate(`/equipment-report/${equipment.id}`)}>
+                                <i className="fa-solid fa-flag" style={{ marginRight: '4px' }}></i>
+                                Report this equipment
+                            </a>
+                        </div>
+                    )}
                 </div>
             </div>
+
+            {/* Confirmation Modal */}
+            {showConfirmModal && (
+                <div className="pd-modal-overlay" onClick={() => !bookingInProgress && setShowConfirmModal(false)}>
+                    <div className="pd-modal" onClick={(e) => e.stopPropagation()}>
+                        <h2 className="pd-modal-title">Confirm Booking</h2>
+                        <p className="pd-modal-subtitle">Review the details before confirming</p>
+
+                        <div className="pd-modal-summary">
+                            <div className="pd-modal-row">
+                                <span className="pd-modal-row-label">Equipment</span>
+                                <span className="pd-modal-row-value">{equipment.title}</span>
+                            </div>
+                            <div className="pd-modal-row">
+                                <span className="pd-modal-row-label">Owner</span>
+                                <span className="pd-modal-row-value">
+                                    {equipment.owner?.first_name} {equipment.owner?.last_name}
+                                </span>
+                            </div>
+                            <div className="pd-modal-row">
+                                <span className="pd-modal-row-label">Dates</span>
+                                <span className="pd-modal-row-value">{formattedStartDate} → {formattedEndDate}</span>
+                            </div>
+                            <div className="pd-modal-row">
+                                <span className="pd-modal-row-label">Duration</span>
+                                <span className="pd-modal-row-value">{numberOfDays} day{numberOfDays > 1 ? 's' : ''}</span>
+                            </div>
+                            <div className="pd-modal-row">
+                                <span className="pd-modal-row-label">Daily Rate</span>
+                                <span className="pd-modal-row-value">₹{equipment.daily_rental}</span>
+                            </div>
+                            <div className="pd-modal-row pd-modal-total">
+                                <span className="pd-cost-total-label">Estimated Total</span>
+                                <span className="pd-cost-total-value">₹{estimatedCost.toLocaleString('en-IN')}</span>
+                            </div>
+                        </div>
+
+                        <div className="pd-modal-notice">
+                            The owner has <strong>48 hours</strong> to respond. You won't be charged until accepted.
+                            Free cancellation up to 24h before start date.
+                        </div>
+
+                        <div className="pd-modal-actions">
+                            <button className="pd-modal-btn cancel" disabled={bookingInProgress}
+                                onClick={() => setShowConfirmModal(false)}>Cancel</button>
+                            <button className="pd-modal-btn confirm" disabled={bookingInProgress}
+                                onClick={handleConfirmBooking}>
+                                {bookingInProgress ? 'Booking...' : 'Confirm Booking'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
-    )
-}
+    );
+};
 
-export default Product
+export default Product;

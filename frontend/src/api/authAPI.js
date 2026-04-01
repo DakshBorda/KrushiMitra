@@ -149,18 +149,27 @@ export const resetPassword = async (password, accessToken) => {
 };
 
 export const updateProfile = async ({ formData, accessToken }) => {
-  const headers = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${accessToken}`
-  };
   try {
     const uuid = Cookies.get("uuid");
-    const res = await instance.put(`${url}/users/${uuid}/`, formData, {
-      headers
+
+    // Build FormData for multipart upload (supports files)
+    const fd = new FormData();
+    Object.keys(formData).forEach((key) => {
+      const val = formData[key];
+      // Skip empty strings and null/undefined but allow 0
+      if (val === "" || val === null || val === undefined) return;
+      fd.append(key, val);
+    });
+
+    const res = await instance.patch(`/users/${uuid}/`, fd, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        // Let browser set Content-Type with boundary for multipart
+      },
     });
     return Promise.resolve(res.data);
   } catch (err) {
-    return Promise.reject(err.response?.data?.msg);
+    return Promise.reject(err.response?.data || { msg: "Update failed" });
   }
 };
 

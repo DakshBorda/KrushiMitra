@@ -1,21 +1,158 @@
-.wrapper {
-    position: absolute;
-    top: 36%;
-    left: 32%;
-    z-index: 999;
+/* ═══════════════════════════════════════════════
+   BANNER — Homepage Hero Slider
+   ═══════════════════════════════════════════════ */
+
+.banner-slide {
+    position: relative;
+    overflow: hidden;
 }
 
-.home1Img {
-    opacity: 70%;
-    background-color: rgba(0, 0, 0, 0.8);
-    filter: brightness(80%);
+.banner-img {
+    width: 100%;
+    height: auto;
+    min-height: 400px;
+    max-height: 540px;
+    object-fit: cover;
+    filter: brightness(75%);
 }
+
+.banner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        to right,
+        rgba(0, 0, 0, 0.45) 0%,
+        rgba(0, 0, 0, 0.2) 50%,
+        rgba(0, 0, 0, 0.1) 100%
+    );
+    z-index: 2;
+}
+
+/* ── Content — Properly Centered ── */
+.banner-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    text-align: center;
+    width: 90%;
+    max-width: 700px;
+}
+
+.banner-welcome {
+    font-size: 18px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 0 0 8px 0;
+    letter-spacing: 0.3px;
+}
+
+.banner-headline {
+    font-size: 38px;
+    font-weight: 800;
+    color: #fff;
+    margin: 0 0 12px 0;
+    line-height: 1.2;
+    letter-spacing: -0.5px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.banner-highlight {
+    color: #4ade80;
+    font-style: normal;
+}
+
+.banner-subtext {
+    font-size: 16px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0 0 28px 0;
+}
+
+/* ── Action Buttons ── */
+.banner-actions {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.banner-cta-primary {
+    background: linear-gradient(135deg, #16a34a, #22c55e);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 12px 32px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 16px rgba(22, 163, 74, 0.35);
+    letter-spacing: 0.3px;
+}
+.banner-cta-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(22, 163, 74, 0.45);
+}
+
+.banner-cta-secondary {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 11px 24px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.banner-cta-secondary:hover {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+}
+.banner-cta-secondary i {
+    font-size: 16px;
+    color: #4ade80;
+}
+
+/* ── Legacy support (used elsewhere) ── */
 .equipImg {
     max-width: 100%;
     border-radius: 4px;
     opacity: 0.92;
 }
 
-.slider-wrapper {
-    height: 500px;
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .banner-headline {
+        font-size: 26px;
+    }
+    .banner-welcome {
+        font-size: 15px;
+    }
+    .banner-subtext {
+        font-size: 14px;
+    }
+    .banner-img {
+        min-height: 320px;
+    }
+}
+
+@media (max-width: 480px) {
+    .banner-headline {
+        font-size: 22px;
+    }
+    .banner-cta-primary {
+        padding: 10px 24px;
+        font-size: 14px;
+    }
 }

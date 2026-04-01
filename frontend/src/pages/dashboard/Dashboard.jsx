@@ -1,138 +1,133 @@
 import React, { useEffect, useState, useMemo } from 'react'
 import './Dashboard.css';
 import ProductItem from '../../components/dashboardComponent/product/ProductItem';
-import Dropdown from '../../components/dropdown/Dropdown';
 import { getEquips, getEquipsList, getBrands } from '../../api/equipments';
 import { DateRangePicker } from 'react-date-range';
-import { useNavigate } from 'react-router-dom';
+import 'react-date-range/dist/styles.css';
+import 'react-date-range/dist/theme/default.css';
+
+const SORT_OPTIONS = [
+    { value: 'newest', label: 'Newest First' },
+    { value: 'price_low', label: 'Price: Low to High' },
+    { value: 'price_high', label: 'Price: High to Low' },
+    { value: 'name_az', label: 'Name: A → Z' },
+];
 
 const Dashboard = () => {
     const [equipments, setEquipments] = useState([]);
     const [equipList, setEquipList] = useState([]);
+    const [brands, setBrands] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // Filters
     const [searchInput, setSearchInput] = useState('');
-    const [visible1, setVisible1] = useState(false);
-    const [perDay, setPerDay] = useState(149827);
-    const [perHour, setPerHour] = useState(49827);
+    const [maxDailyPrice, setMaxDailyPrice] = useState(null); // null = no filter
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [selectedBrand, setSelectedBrand] = useState(null);
-    const [brands, setBrands] = useState([]);
+    const [selectedCondition, setSelectedCondition] = useState(null); // 'New' | 'Used' | null
+    const [sortBy, setSortBy] = useState('newest');
+
+    // Date filter
+    const [showDatePicker, setShowDatePicker] = useState(false);
     const [startDate, setStartDate] = useState(new Date());
     const [endDate, setEndDate] = useState(new Date());
     const [dateFilterActive, setDateFilterActive] = useState(false);
-    const navigate = useNavigate();
 
-    useEffect(() => {
-        const getEquipments = async () => {
-            try {
-                const { data } = await getEquips();
-                setEquipments(data?.results || data || []);
-            } catch (err) {
-                console.log("Error fetching equipments:", err);
-            }
-        }
-        getEquipments();
-    }, [])
+    // ── Price ceiling from actual data ──
+    const priceMax = useMemo(() => {
+        if (equipments.length === 0) return 10000;
+        const max = Math.max(...equipments.map(eq => eq?.daily_rental || 0));
+        // Round up to nearest nice number
+        return Math.ceil(max / 500) * 500 || 10000;
+    }, [equipments]);
 
+    const [priceSliderValue, setPriceSliderValue] = useState(null);
+
+    // Reset slider when priceMax changes
     useEffect(() => {
-        const getEquipmentsList = async () => {
+        setPriceSliderValue(priceMax);
+    }, [priceMax]);
+
+    // ── Fetch data ──
+    useEffect(() => {
+        const fetchAll = async () => {
+            setLoading(true);
             try {
-                const { data } = await getEquipsList();
-                setEquipList(data || []);
+                const [eqRes, typeRes, brandRes] = await Promise.allSettled([
+                    getEquips(),
+                    getEquipsList(),
+                    getBrands(),
+                ]);
+                if (eqRes.status === 'fulfilled') {
+                    const d = eqRes.value?.data;
+                    setEquipments(d?.results || d || []);
+                }
+                if (typeRes.status === 'fulfilled') {
+                    setEquipList(typeRes.value?.data || []);
+                }
+                if (brandRes.status === 'fulfilled') {
+                    setBrands(brandRes.value?.data || []);
+                }
             } catch (err) {
-                console.log("Error fetching equipment types:", err);
+                console.error('Error fetching equipment data:', err);
+            } finally {
+                setLoading(false);
             }
-        }
-        getEquipmentsList();
+        };
+        fetchAll();
     }, []);
 
-    useEffect(() => {
-        const fetchBrands = async () => {
-            try {
-                const { data } = await getBrands();
-                setBrands(data || []);
-            } catch (err) {
-                console.log("Error fetching brands:", err);
-            }
-        }
-        fetchBrands();
-    }, []);
-
-    const selectionRange = {
-        startDate: startDate,
-        endDate: endDate,
-        key: 'selection'
-    }
-
+    // ── Date handler ──
     const handleDateSelect = (ranges) => {
         setStartDate(ranges.selection.startDate);
         setEndDate(ranges.selection.endDate);
         setDateFilterActive(true);
     };
 
-    const handleCategoryClick = (categoryName) => {
-        setSelectedCategory(prev => prev === categoryName ? null : categoryName);
-    };
-
-    const handleBrandClick = (brandName) => {
-        setSelectedBrand(prev => prev === brandName ? null : brandName);
-    };
-
-    const clearAllFilters = () => {
-        setSearchInput('');
-        setPerDay(149827);
-        setPerHour(49827);
-        setSelectedCategory(null);
-        setSelectedBrand(null);
-        setDateFilterActive(false);
-        setStartDate(new Date());
-        setEndDate(new Date());
-    };
-
-    // Combined filtering logic
+    // ── Combined filtering + sorting ──
     const filteredEquipments = useMemo(() => {
-        let result = equipments;
+        let result = [...equipments];
 
-        // Search filter
+        // Search
         if (searchInput.trim()) {
-            const query = searchInput.toLowerCase();
+            const q = searchInput.toLowerCase();
             result = result.filter(eq =>
-                eq?.title?.toLowerCase().includes(query) ||
-                eq?.manufacturer?.toLowerCase().includes(query) ||
-                eq?.equipment_location?.toLowerCase().includes(query)
+                eq?.title?.toLowerCase().includes(q) ||
+                eq?.manufacturer_name?.toLowerCase().includes(q) ||
+                eq?.manufacturer?.toLowerCase().includes(q) ||
+                eq?.equipment_location?.toLowerCase().includes(q)
             );
         }
 
-        // Price per day filter
-        if (perDay < 149827) {
-            result = result.filter(eq => eq?.daily_rental <= perDay);
+        // Price
+        if (maxDailyPrice !== null && priceSliderValue < priceMax) {
+            result = result.filter(eq => (eq?.daily_rental || 0) <= priceSliderValue);
         }
 
-        // Price per hour filter
-        if (perHour < 49827) {
-            result = result.filter(eq => eq?.hourly_rental <= perHour);
-        }
-
-        // Manufacturer/Brand filter
+        // Brand
         if (selectedBrand) {
             result = result.filter(eq =>
-                eq?.manufacturer?.toLowerCase() === selectedBrand.toLowerCase()
+                (eq?.manufacturer_name || eq?.manufacturer || '').toLowerCase() === selectedBrand.toLowerCase()
             );
         }
 
-        // Category filter
+        // Category
         if (selectedCategory) {
             result = result.filter(eq => {
-                // equipment_type may be an ID or an object
                 if (typeof eq?.equipment_type === 'object') {
                     return eq.equipment_type?.name === selectedCategory;
                 }
-                // Match by looking up the ID in equipList
                 const matchedType = equipList.find(t => t.name === selectedCategory);
                 return matchedType && eq.equipment_type === matchedType.id;
             });
         }
 
-        // Date availability filter
+        // Condition
+        if (selectedCondition) {
+            result = result.filter(eq => eq?.condition === selectedCondition);
+        }
+
+        // Date availability
         if (dateFilterActive) {
             const filterStart = startDate.toISOString().slice(0, 10);
             const filterEnd = endDate.toISOString().slice(0, 10);
@@ -142,197 +137,301 @@ const Dashboard = () => {
             });
         }
 
-        return result;
-    }, [equipments, searchInput, perDay, perHour, selectedCategory, selectedBrand, dateFilterActive, startDate, endDate, equipList]);
+        // Sort
+        switch (sortBy) {
+            case 'price_low':
+                result.sort((a, b) => (a?.daily_rental || 0) - (b?.daily_rental || 0));
+                break;
+            case 'price_high':
+                result.sort((a, b) => (b?.daily_rental || 0) - (a?.daily_rental || 0));
+                break;
+            case 'name_az':
+                result.sort((a, b) => (a?.title || '').localeCompare(b?.title || ''));
+                break;
+            case 'newest':
+            default:
+                // Already sorted by newest from API
+                break;
+        }
 
-    const featuredEquipments = filteredEquipments.slice(0, 6);
-    const hasActiveFilters = searchInput || perDay < 149827 || perHour < 49827 || selectedCategory || selectedBrand || dateFilterActive;
+        return result;
+    }, [equipments, searchInput, priceSliderValue, priceMax, maxDailyPrice, selectedCategory, selectedBrand, selectedCondition, dateFilterActive, startDate, endDate, equipList, sortBy]);
+
+    // ── Active filters ──
+    const activeFilters = [];
+    if (searchInput.trim()) activeFilters.push({ key: 'search', label: `"${searchInput}"`, clear: () => setSearchInput('') });
+    if (selectedCategory) activeFilters.push({ key: 'category', label: selectedCategory, clear: () => setSelectedCategory(null) });
+    if (selectedBrand) activeFilters.push({ key: 'brand', label: selectedBrand, clear: () => setSelectedBrand(null) });
+    if (selectedCondition) activeFilters.push({ key: 'condition', label: selectedCondition, clear: () => setSelectedCondition(null) });
+    if (maxDailyPrice !== null && priceSliderValue < priceMax) activeFilters.push({ key: 'price', label: `≤ ₹${priceSliderValue?.toLocaleString('en-IN')}`, clear: () => { setMaxDailyPrice(null); setPriceSliderValue(priceMax); } });
+    if (dateFilterActive) activeFilters.push({ key: 'date', label: `${startDate.toLocaleDateString('en-IN')} — ${endDate.toLocaleDateString('en-IN')}`, clear: () => { setDateFilterActive(false); setStartDate(new Date()); setEndDate(new Date()); } });
+
+    const clearAllFilters = () => {
+        setSearchInput('');
+        setMaxDailyPrice(null);
+        setPriceSliderValue(priceMax);
+        setSelectedCategory(null);
+        setSelectedBrand(null);
+        setSelectedCondition(null);
+        setDateFilterActive(false);
+        setStartDate(new Date());
+        setEndDate(new Date());
+        setSortBy('newest');
+    };
+
+    const hasActiveFilters = activeFilters.length > 0;
+
+    // ── Price slider fill percentage ──
+    const priceFill = priceMax > 0 ? ((priceSliderValue || priceMax) / priceMax) * 100 : 100;
 
     return (
         <>
-            <div className='max-w-7xl my-10 mx-auto'>
-                <div className='mt-4'>
-                    <div className='flex justify-around'>
-                        <h1 className='text-2xl font-bold text-gray-600 text-right'>Search Equipments</h1>
-                        <div className=''>
-                            <div className="input-group relative flex items-center w-full mb-4">
-                                <input
-                                    onChange={(e) => setSearchInput(e.target.value)}
-                                    value={searchInput}
-                                    type="search"
-                                    className="searchInput form-control relative flex-auto min-w-0 block w-full px-3 py-3 text-base font-normal text-gray-700 bg-white bg-clip-padding border border-solid border-gray-300 rounded transition ease-in-out m-0 focus:text-gray-700 focus:bg-white focus:border-blue-600 focus:outline-none"
-                                    placeholder="Search by name, brand, or location..."
-                                    aria-label="Search"
-                                />
-                                <button
-                                    className="searchBtn btn inline-block px-6 py-2 text-green-600 font-medium text-sm leading-tight uppercase rounded hover:bg-black hover:bg-opacity-5 cursor-pointer focus:outline-none focus:ring-0 transition duration-150 ease-in-out"
-                                    type="button"
-                                >
-                                    Search
-                                </button>
+            {/* ═══ HERO SEARCH ═══ */}
+            <div className="browse-hero">
+                <h1 className="browse-hero-title">Browse Equipment</h1>
+                <p className="browse-hero-subtitle">
+                    Find the right farming equipment for your needs — tractors, tillers, harvesters & more
+                </p>
+                <div className="browse-search-wrap">
+                    <i className="fa-solid fa-magnifying-glass browse-search-icon"></i>
+                    <input
+                        type="text"
+                        className="browse-search-input"
+                        placeholder="Search by equipment name, brand, or location..."
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
+                        id="browse-search"
+                    />
+                    {searchInput && (
+                        <button className="browse-search-clear" onClick={() => setSearchInput('')}>
+                            <i className="fa-solid fa-xmark"></i>
+                        </button>
+                    )}
+                </div>
+
+                {/* Active filter chips */}
+                {hasActiveFilters && (
+                    <div className="browse-chips">
+                        {activeFilters.map(f => (
+                            <span key={f.key} className="browse-chip" onClick={f.clear}>
+                                {f.label} <span className="browse-chip-x">×</span>
+                            </span>
+                        ))}
+                        <span className="browse-chip browse-clear-all" onClick={clearAllFilters}>
+                            Clear All <span className="browse-chip-x">×</span>
+                        </span>
+                    </div>
+                )}
+            </div>
+
+            {/* ═══ MAIN LAYOUT ═══ */}
+            <div className="browse-layout">
+
+                {/* ── SIDEBAR FILTERS ── */}
+                <aside className="browse-sidebar">
+
+                    {/* Categories */}
+                    <div className="sidebar-section">
+                        <div className="sidebar-section-title">Categories</div>
+                        {equipList?.map(type => (
+                            <div
+                                key={type.id}
+                                className={`filter-item ${selectedCategory === type.name ? 'active' : ''}`}
+                                onClick={() => setSelectedCategory(prev => prev === type.name ? null : type.name)}
+                            >
+                                <span className="filter-item-name">{type.name}</span>
+                                <span className="filter-item-check">
+                                    {selectedCategory === type.name && <i className="fa-solid fa-check"></i>}
+                                </span>
                             </div>
+                        ))}
+                    </div>
+
+                    {/* Brands */}
+                    <div className="sidebar-section">
+                        <div className="sidebar-section-title">Manufacturers</div>
+                        {brands?.map(brand => (
+                            <div
+                                key={brand.id}
+                                className={`filter-item ${selectedBrand === brand.name ? 'active' : ''}`}
+                                onClick={() => setSelectedBrand(prev => prev === brand.name ? null : brand.name)}
+                            >
+                                <span className="filter-item-name">{brand.name}</span>
+                                <span className="filter-item-check">
+                                    {selectedBrand === brand.name && <i className="fa-solid fa-check"></i>}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Condition */}
+                    <div className="sidebar-section">
+                        <div className="sidebar-section-title">Condition</div>
+                        <div className="condition-toggle">
+                            <button
+                                className={`condition-btn ${selectedCondition === 'New' ? 'active' : ''}`}
+                                onClick={() => setSelectedCondition(prev => prev === 'New' ? null : 'New')}
+                            >
+                                New
+                            </button>
+                            <button
+                                className={`condition-btn ${selectedCondition === 'Used' ? 'active' : ''}`}
+                                onClick={() => setSelectedCondition(prev => prev === 'Used' ? null : 'Used')}
+                            >
+                                Used
+                            </button>
                         </div>
                     </div>
-                    <div className='flex mb-10 justify-around'>
-                        <h1 className='mt-3 mb-3 text-md font-semibold text-gray-500 text-center'>
-                            Search your desired Equipments directly by entering a keyword or the whole name.
-                        </h1>
+
+                    {/* Price Range */}
+                    <div className="sidebar-section">
+                        <div className="sidebar-section-title">Daily Rental Price</div>
+                        <div className="price-range-wrap">
+                            <div className="price-range-label">
+                                <span>₹0</span>
+                                <span className="price-range-value">
+                                    ₹{(priceSliderValue || priceMax).toLocaleString('en-IN')}
+                                </span>
+                            </div>
+                            <input
+                                type="range"
+                                className="price-range-slider"
+                                min={0}
+                                max={priceMax}
+                                step={Math.max(Math.round(priceMax / 100), 50)}
+                                value={priceSliderValue || priceMax}
+                                onChange={(e) => {
+                                    const val = Number(e.target.value);
+                                    setPriceSliderValue(val);
+                                    setMaxDailyPrice(val);
+                                }}
+                                style={{ '--fill': `${priceFill}%` }}
+                            />
+                            {maxDailyPrice !== null && priceSliderValue < priceMax && (
+                                <button
+                                    style={{ fontSize: '12px', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                                    onClick={() => { setMaxDailyPrice(null); setPriceSliderValue(priceMax); }}
+                                >
+                                    Reset price
+                                </button>
+                            )}
+                        </div>
                     </div>
 
-                    <div className='flex justify-around w-full'>
-                        {/* LEFT SIDEBAR — FILTERS */}
-                        <div className='w-1/4'>
-                            <div className='bg-[#68AC5D] py-4 px-1 prFilter'>
-                                <h1 className='text-lg font-bold text-center text-white'>Product Filters</h1>
-                            </div>
-
-                            <div className='border py-6'>
-                                {hasActiveFilters && (
-                                    <div className='px-6 mb-4'>
+                    {/* Date Availability */}
+                    <div className="sidebar-section">
+                        <div className="sidebar-section-title">Availability</div>
+                        <div style={{ padding: '12px 18px', position: 'relative' }}>
+                            <button
+                                className={`date-filter-btn ${dateFilterActive ? 'has-dates' : ''}`}
+                                onClick={() => setShowDatePicker(!showDatePicker)}
+                            >
+                                <i className="fa-solid fa-calendar-days"></i>
+                                {dateFilterActive
+                                    ? `${startDate.toLocaleDateString('en-IN')} — ${endDate.toLocaleDateString('en-IN')}`
+                                    : 'Select dates'}
+                            </button>
+                            {dateFilterActive && (
+                                <button
+                                    style={{ fontSize: '12px', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, marginTop: '6px', display: 'block' }}
+                                    onClick={() => { setDateFilterActive(false); setStartDate(new Date()); setEndDate(new Date()); setShowDatePicker(false); }}
+                                >
+                                    Clear dates
+                                </button>
+                            )}
+                            {showDatePicker && (
+                                <div className="date-picker-container">
+                                    <DateRangePicker
+                                        ranges={[{ startDate, endDate, key: 'selection' }]}
+                                        minDate={new Date()}
+                                        rangeColors={["#16a34a"]}
+                                        onChange={handleDateSelect}
+                                        months={1}
+                                        direction="vertical"
+                                    />
+                                    <div style={{ padding: '8px 16px 12px', textAlign: 'right' }}>
                                         <button
-                                            onClick={clearAllFilters}
-                                            className='text-sm text-red-500 underline hover:text-red-700'
+                                            style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '6px 20px', borderRadius: '8px', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
+                                            onClick={() => setShowDatePicker(false)}
                                         >
+                                            Done
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </aside>
+
+                {/* ── MAIN CONTENT ── */}
+                <main className="browse-main">
+
+                    {/* Toolbar */}
+                    <div className="browse-toolbar">
+                        <div className="browse-result-count">
+                            {loading ? (
+                                'Loading equipment...'
+                            ) : (
+                                <>
+                                    Showing <strong>{filteredEquipments.length}</strong>
+                                    {hasActiveFilters ? ` of ${equipments.length}` : ''} equipment
+                                </>
+                            )}
+                        </div>
+                        <select
+                            className="browse-sort-select"
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            id="browse-sort"
+                        >
+                            {SORT_OPTIONS.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Loading skeleton */}
+                    {loading && (
+                        <div className="browse-skeleton">
+                            {[...Array(6)].map((_, i) => (
+                                <div key={i} className="skeleton-card">
+                                    <div className="skeleton-img" />
+                                    <div className="skeleton-body">
+                                        <div className="skeleton-line" />
+                                        <div className="skeleton-line short" />
+                                        <div className="skeleton-line price" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Equipment grid */}
+                    {!loading && (
+                        <div className="browse-grid">
+                            {filteredEquipments.length > 0 ? (
+                                filteredEquipments.map(equipment => (
+                                    <ProductItem key={equipment.id} equipment={equipment} />
+                                ))
+                            ) : (
+                                <div className="browse-empty">
+                                    <div className="browse-empty-icon">
+                                        <i className="fa-solid fa-tractor"></i>
+                                    </div>
+                                    <h2 className="browse-empty-title">No equipment found</h2>
+                                    <p className="browse-empty-text">
+                                        Try adjusting your filters or search terms to find what you need.
+                                    </p>
+                                    {hasActiveFilters && (
+                                        <button className="browse-empty-btn" onClick={clearAllFilters}>
                                             Clear All Filters
                                         </button>
-                                    </div>
-                                )}
-
-                                <span className='text-lg mb-4 font-semibold text-[#4F4F4F] border-b-2 border-[#68AC5D] pb-1 ml-6'>Categories:</span>
-                                <div className='my-5'>
-                                    {equipList?.map(list => (
-                                        <Dropdown
-                                            key={list.id}
-                                            title={list.name}
-                                            onClick={handleCategoryClick}
-                                            active={selectedCategory === list.name}
-                                        />
-                                    ))}
-                                </div>
-
-                                <span className='text-lg mb-4 font-semibold text-[#4F4F4F] border-b-2 border-[#68AC5D] pb-1 ml-6'>Brands</span>
-                                <div className='my-5'>
-                                    {brands?.map(brand => (
-                                        <Dropdown
-                                            key={brand.id}
-                                            title={brand.name}
-                                            onClick={handleBrandClick}
-                                            active={selectedBrand === brand.name}
-                                        />
-                                    ))}
-                                </div>
-
-                                <span className='text-lg mb-4 font-semibold text-[#4F4F4F] border-b-2 border-[#68AC5D] pb-1 ml-6'>Price Range</span>
-                                <div className='my-5'>
-                                    <p className='text-md font-semibold text-[#4F4F4F] pl-8'>Price per day</p>
-                                    <input
-                                        type="range"
-                                        id="perDay"
-                                        min={0}
-                                        max={149827}
-                                        onChange={(e) => setPerDay(Number(e.target.value))}
-                                        value={perDay}
-                                        className="rangeInput form-range text-green-100 appearance-none w-full h-6 p-0 bg-transparent focus:outline-none focus:ring-0 focus:shadow-none"
-                                    />
-                                    <p className='text-md mb-3 font-normal text-[#4F4F4F] pl-8'>Rs. 0 to {perDay}</p>
-
-                                    <p className='text-md font-semibold text-[#4F4F4F] pl-8'>Price per hour</p>
-                                    <input
-                                        type="range"
-                                        id="perHour"
-                                        min={0}
-                                        max={49827}
-                                        onChange={(e) => setPerHour(Number(e.target.value))}
-                                        value={perHour}
-                                        className="rangeInput form-range text-green-100 appearance-none w-full h-6 p-0 bg-transparent focus:outline-none focus:ring-0 focus:shadow-none"
-                                    />
-                                    <p className='text-md mb-3 font-normal text-[#4F4F4F] pl-8'>Rs. 0 to {perHour}</p>
-                                </div>
-
-                                <span className='text-lg mb-4 font-semibold text-[#4F4F4F] border-b-2 border-[#68AC5D] pb-1 ml-6'>Availability Date</span>
-                                <div className='my-3 px-6'>
-                                    <button
-                                        onClick={() => setVisible1(!visible1)}
-                                        className="bg-darkgreen hover:bg-green-700 text-white font-normal text-sm py-2 text-center w-full my-2 px-2 rounded"
-                                    >
-                                        {dateFilterActive
-                                            ? `${startDate.toLocaleDateString()} — ${endDate.toLocaleDateString()}`
-                                            : "Select Date Range"}
-                                    </button>
-                                    {dateFilterActive && (
-                                        <button
-                                            onClick={() => { setDateFilterActive(false); setStartDate(new Date()); setEndDate(new Date()); }}
-                                            className="text-xs text-red-500 underline mb-2"
-                                        >
-                                            Clear dates
-                                        </button>
                                     )}
                                 </div>
-                                {visible1 && (
-                                    <div style={{ zIndex: 10, position: 'relative' }}>
-                                        <DateRangePicker
-                                            style={{ height: '300px', width: '280px' }}
-                                            ranges={[selectionRange]}
-                                            minDate={new Date()}
-                                            rangeColors={["#68AC5D"]}
-                                            onChange={handleDateSelect}
-                                        />
-                                    </div>
-                                )}
-                            </div>
+                            )}
                         </div>
-
-                        {/* RIGHT SIDE — EQUIPMENT GRID */}
-                        <div className='w-3/4 ml-8'>
-                            {/* Featured Products */}
-                            <div className='relative flex justify-around'>
-                                <h1 className='absolute top-0 left-0 text-2xl font-bold text-gray-600'>Featured Products</h1>
-                            </div>
-
-                            <div className='flex flex-wrap items-center'>
-                                <div className='flex flex-wrap my-12'>
-                                    {featuredEquipments.length > 0 ? (
-                                        featuredEquipments.map(equipment => (
-                                            <ProductItem key={equipment.id} equipment={equipment} />
-                                        ))
-                                    ) : (
-                                        <p className='text-gray-400 text-lg ml-4'>No equipment matches your filters.</p>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* All Products */}
-                            <div className='relative flex justify-around'>
-                                <h1 className='absolute top-0 left-0 text-2xl font-bold text-gray-600'>
-                                    All Products ({filteredEquipments.length})
-                                </h1>
-                            </div>
-
-                            <div className='flex flex-wrap items-center'>
-                                <div className='flex flex-wrap my-12'>
-                                    {filteredEquipments.length > 0 ? (
-                                        filteredEquipments.map(equipment => (
-                                            <ProductItem key={equipment.id} equipment={equipment} />
-                                        ))
-                                    ) : (
-                                        <div className='text-center w-full py-16'>
-                                            <h2 className='text-2xl font-bold text-gray-400'>No equipment found</h2>
-                                            <p className='text-gray-400 mt-2'>Try adjusting your filters or search terms.</p>
-                                            {hasActiveFilters && (
-                                                <button
-                                                    onClick={clearAllFilters}
-                                                    className='mt-4 bg-[#219653] text-white px-6 py-2 rounded hover:opacity-90'
-                                                >
-                                                    Clear All Filters
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    )}
+                </main>
             </div>
         </>
     )

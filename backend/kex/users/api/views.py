@@ -2,6 +2,7 @@ from rest_framework import generics
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 from rest_framework.permissions import IsAuthenticated
 
@@ -15,7 +16,8 @@ User = get_user_model()
 class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
     queryset = User.objects.filter(is_verified=True, is_superuser=False)
     serializer_class = UserUpdateSerializer
-    permission_class = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     lookup_field = "uuid"
 
     def get_queryset(self, *args, **kwargs):
@@ -30,9 +32,16 @@ class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
         if user.user_id != request.user.user_id:
             raise AuthenticationFailed(f"Invalid token for uuid {kwargs.get('uuid')}")
 
-        serializer = self.serializer_class(data=request.data)
+        # Support partial updates (PATCH)
+        partial = kwargs.pop('partial', request.method == 'PATCH')
+
+        serializer = self.serializer_class(
+            user,
+            data=request.data,
+            partial=partial,
+        )
         serializer.is_valid(raise_exception=True)
-        user = serializer.update(user, serializer.validated_data)
+        serializer.save()
 
         return Response(
             response_payload(
@@ -46,9 +55,6 @@ class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
         user = self.get_queryset(*args, **kwargs)
         if user.user_id != request.user.user_id:
             raise AuthenticationFailed(f"Invalid token for uuid {kwargs.get('uuid')}")
-
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
 
         return Response(
             response_payload(

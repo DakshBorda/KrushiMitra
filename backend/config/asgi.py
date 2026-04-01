@@ -22,13 +22,13 @@ sys.path.append(str(ROOT_DIR / "kex"))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")
 django.setup()
 
-from channels.auth import AuthMiddlewareStack  # noqa
 from channels.routing import ProtocolTypeRouter, URLRouter  # noqa
+from kex.chat.middleware import JWTAuthMiddleware  # noqa
 from kex.chat.routing import websocket_urlpatterns  # noqa
 
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
-    "websocket": AuthMiddlewareStack(
+    "websocket": JWTAuthMiddleware(
         URLRouter(websocket_urlpatterns)
     ),
 })

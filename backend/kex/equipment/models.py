@@ -72,3 +72,5 @@ class EquipmentRating(models.Model):
 
     class Meta:
         unique_together = ("user", "equipment")
+        verbose_name = "Rating & Review"
+        verbose_name_plural = "Ratings & Reviews"

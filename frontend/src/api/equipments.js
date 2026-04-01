@@ -82,6 +82,9 @@ export const createEquipment = async (data, images = {}) => {
     formData.append("width", toInt(data.width));
     formData.append("height", toInt(data.height));
     formData.append("weight", toInt(data.weight));
+    // Always set new equipment as available
+    formData.append("is_available", "true");
+    formData.append("show_phone_number", data.show_phone_number ? "true" : "false");
 
     // Append image files if provided
     ["image_1", "image_2", "image_3", "image_4", "image_5"].forEach((key) => {
@@ -118,7 +121,11 @@ export const updateEquipment = async (id, data, images = {}) => {
   try {
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
+      if (value === undefined || value === null) return;
+      // Booleans must be sent as "true"/"false" for DRF BooleanField
+      if (typeof value === "boolean") {
+        formData.append(key, value ? "true" : "false");
+      } else {
         formData.append(key, value);
       }
     });

@@ -1,6 +1,6 @@
 # Django imports
 from django.db import models
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from kex.equipment.models import Equipment
 
 from kex.users.admin import User
@@ -17,6 +17,10 @@ class HelpCentre(models.Model):
     )
     title = models.CharField(_("Title"), max_length=50, blank=True)
     reason = models.TextField(_("Enquiry Reason"), blank=False)
+
+    class Meta:
+        verbose_name = "Help Desk Enquiry"
+        verbose_name_plural = "Help Desk Enquiries"
 
     def __str__(self):
         return str(self.name)
@@ -39,6 +43,10 @@ class PartnerDispute(models.Model):
     topic = models.PositiveIntegerField(choices=TOPIC)
     description = models.TextField(_("Description"), blank=False)
 
+    class Meta:
+        verbose_name = "Partner Dispute"
+        verbose_name_plural = "Partner Disputes"
+
     def __str__(self):
         return str(self.name)
 
@@ -54,6 +62,10 @@ class CancelForm(models.Model):
     cancel_reason = models.PositiveIntegerField(choices=CANCEL_REASON)
     description = models.TextField(_("Description"), blank=True)
     
+    class Meta:
+        verbose_name = "Cancellation Request"
+        verbose_name_plural = "Cancellation Requests"
+
     def __str__(self):
         return str(self.booking_id)
 
@@ -69,6 +81,10 @@ class ReportEquipment(models.Model):
     )
     report_reason = models.PositiveIntegerField(choices=REPORT_REASON)
     description = models.TextField(_("Description"), blank=True)
+    class Meta:
+        verbose_name = "Equipment Report"
+        verbose_name_plural = "Equipment Reports"
+
     def __str__(self):
         return str(self.user.first_name)
 
@@ -80,5 +96,10 @@ class FeedbackForm(models.Model):
         max_length=10,
     )
     description = models.TextField(_("Description"), blank=False)
+
+    class Meta:
+        verbose_name = "User Feedback"
+        verbose_name_plural = "User Feedback"
+
     def __str__(self):
         return str(self.name)

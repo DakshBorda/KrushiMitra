@@ -91,6 +91,18 @@ class User(AbstractUser):
     #     """
     #     return reverse("users:detail", kwargs={"username": self.username})
 
+    @property
+    def is_profile_complete(self):
+        """Check if user has filled all required profile fields."""
+        return all([
+            self.first_name,
+            self.last_name,
+            self.address,
+            self.city,
+            self.state,
+            self.pin_code,
+        ])
+
     def save(self, *args, **kwargs):
         if not self.username:
             username = "%s.%s" % (self.first_name.lower(), self.last_name.lower())

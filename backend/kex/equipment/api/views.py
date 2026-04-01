@@ -33,6 +33,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from kex.core.utils import response_payload
 from rest_framework.exceptions import NotFound
+from kex.booking.models import Booking
 
 
 from rest_framework.parsers import MultiPartParser, FormParser
@@ -52,6 +53,27 @@ class EquipmentCreateAPIView(CreateAPIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def create(self, request, *args, **kwargs):
+        # Business Rule: Profile must be complete to list equipment
+        if not request.user.is_profile_complete:
+            return Response(
+                response_payload(
+                    success=False,
+                    msg="Please complete your profile (address, city, state, pincode) before listing equipment.",
+                ),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Business Rule: Max 15 equipment listings per user
+        current_count = Equipment.objects.filter(owner=request.user).count()
+        if current_count >= 15:
+            return Response(
+                response_payload(
+                    success=False,
+                    msg=f"You have reached the maximum limit of 15 equipment listings. Please delete an existing listing first.",
+                ),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
             return Response(
@@ -104,6 +126,23 @@ class EquipmentDeleteAPIView(DestroyAPIView):
     serializer_class = EquipmentDetailSerializer
     lookup_field = "id"
     permission_classes = [IsOwnerOrReadOnly, IsAuthenticated]
+
+    def destroy(self, request, *args, **kwargs):
+        equipment = self.get_object()
+        # Business Rule: Cannot delete equipment with active bookings
+        active_bookings = Booking.objects.filter(
+            equipment=equipment,
+            status__in=["Pending", "Accepted", "Inprogress"]
+        ).count()
+        if active_bookings > 0:
+            return Response(
+                response_payload(
+                    success=False,
+                    msg=f"Cannot delete equipment with {active_bookings} active booking(s). Cancel or complete them first.",
+                ),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().destroy(request, *args, **kwargs)
 
 
 class EquipmentListAPIView(ListAPIView):
