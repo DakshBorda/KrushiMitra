@@ -8,6 +8,7 @@ import csv
 from django.http import HttpResponse
 
 from kex.users.forms import UserAdminChangeForm, UserAdminCreationForm
+from kex.users.models import PasswordResetOTP
 
 User = get_user_model()
 
@@ -141,3 +142,21 @@ class UserAdmin(auth_admin.UserAdmin):
                 user.date_joined.strftime("%Y-%m-%d"),
             ])
         return response
+
+
+@admin.register(PasswordResetOTP)
+class PasswordResetOTPAdmin(admin.ModelAdmin):
+    list_display = ["user", "otp", "is_used", "attempts", "created_at", "expires_at"]
+    list_filter = ["is_used", "created_at"]
+    search_fields = ["user__email", "user__first_name"]
+    readonly_fields = ["user", "otp", "created_at", "expires_at"]
+    list_per_page = 30
+    ordering = ["-created_at"]
+
+    actions = ["cleanup_expired_otps"]
+
+    @admin.action(description="Remove expired OTPs (older than 24 hours)")
+    def cleanup_expired_otps(self, request, queryset):
+        PasswordResetOTP.cleanup_expired()
+        self.message_user(request, "Expired OTPs have been cleaned up.")
+

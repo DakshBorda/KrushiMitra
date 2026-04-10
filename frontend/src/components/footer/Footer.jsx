@@ -24,17 +24,27 @@ const Footer = () => {
             Connecting farmers with equipment owners across India. Rent
             agricultural machinery easily and affordably.
           </p>
+          <div className="km-footer-contact-info">
+            <span>
+              <i className="fa-solid fa-envelope"></i>
+              <a href="mailto:krushimitra@gmail.com">krushimitra@gmail.com</a>
+            </span>
+            <span>
+              <i className="fa-solid fa-phone"></i>
+              <a href="tel:+919313483725">+91 93134 83725</a>
+            </span>
+          </div>
         </div>
 
         {/* Navigation */}
         <div className="km-footer-col">
-          <h3>Navigate</h3>
+          <h3>Explore</h3>
           <ul>
             <FooterLink to="/" navigate={navigate}>Home</FooterLink>
             <FooterLink to="/dashboard" navigate={navigate}>Browse Equipment</FooterLink>
+            <FooterLink to="/addProduct" navigate={navigate}>List Equipment</FooterLink>
             <FooterLink to="/booking-history" navigate={navigate}>My Bookings</FooterLink>
             <FooterLink to="/my-equipment" navigate={navigate}>My Equipment</FooterLink>
-            <FooterLink to="/notifications" navigate={navigate}>Notifications</FooterLink>
           </ul>
         </div>
 
@@ -43,10 +53,9 @@ const Footer = () => {
           <h3>Support</h3>
           <ul>
             <FooterLink to="/help" navigate={navigate}>Help Center</FooterLink>
-            <FooterLink to="/faq" navigate={navigate}>FAQs</FooterLink>
             <FooterLink to="/contact" navigate={navigate}>Contact Us</FooterLink>
-            <FooterLink to="/partner-dispute" navigate={navigate}>Partner Dispute</FooterLink>
             <FooterLink to="/feedback" navigate={navigate}>Give Feedback</FooterLink>
+            <FooterLink to="/partner-dispute" navigate={navigate}>Raise a Dispute</FooterLink>
           </ul>
         </div>
 
@@ -62,7 +71,7 @@ const Footer = () => {
       {/* Divider + Copyright */}
       <div className="km-footer-divider">
         <p className="km-footer-copyright">
-          © {currentYear} <span>KrushiMitra</span>. All rights reserved.
+          &copy; {currentYear} <span>KrushiMitra</span>. All rights reserved.
         </p>
         <div className="km-footer-social">
           <button type="button" aria-label="Facebook" className="km-footer-social-btn">

@@ -1,49 +1,23 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Cookies from "js-cookie";
 import { format } from "date-fns";
 import { getBooking, getBookingOwner, BookingUpdate } from "../../api/bookingAPI";
 import { useNavigate } from "react-router-dom";
+import { extractErrorMsg } from "../../utils/errorUtils";
+import {
+    STATUS_CONFIG, ALL_STATUSES, REJECTION_REASONS, STATUS_SUCCESS_MESSAGES,
+} from "../../utils/bookingConstants";
 import "./BookingHistory.css";
 
-// ── Error extraction utility — handles all DRF ValidationError shapes ──
-const extractErrorMsg = (err) => {
-    const d = err?.response?.data;
-    if (!d) return 'Something went wrong. Please try again.';
-    if (typeof d === 'string') return d;
-    if (Array.isArray(d)) return d[0];
-    if (d.detail) return d.detail;
-    if (d.message) return Array.isArray(d.message) ? d.message[0] : d.message;
-    if (d.non_field_errors) return Array.isArray(d.non_field_errors) ? d.non_field_errors[0] : d.non_field_errors;
-    const firstKey = Object.keys(d).find(k => k !== 'status');
-    if (firstKey && d[firstKey]) {
-        const val = d[firstKey];
-        return Array.isArray(val) ? val[0] : val;
-    }
-    return 'Operation failed. Please try again.';
-};
-
-// ── Status configuration — clean, no emoji ──
-const STATUS_CONFIG = {
-  Pending:         { label: "Pending",            color: "#d97706", bg: "#fef3c7", icon: "fa-clock" },
-  Accepted:        { label: "Confirmed",          color: "#16a34a", bg: "#dcfce7", icon: "fa-circle-check" },
-  Rejected:        { label: "Declined",           color: "#dc2626", bg: "#fee2e2", icon: "fa-circle-xmark" },
-  AutoRejected:    { label: "Auto Declined",      color: "#ea580c", bg: "#fed7aa", icon: "fa-rotate" },
-  Cancelled:       { label: "Cancelled",          color: "#6b7280", bg: "#f3f4f6", icon: "fa-ban" },
-  CancelledByOwner:{ label: "Owner Cancelled",    color: "#be123c", bg: "#fce7f3", icon: "fa-rectangle-xmark" },
-  Expired:         { label: "Expired",            color: "#9ca3af", bg: "#f3f4f6", icon: "fa-hourglass-end" },
-  Inprogress:      { label: "In Progress",        color: "#ea580c", bg: "#fff7ed", icon: "fa-spinner" },
-  Completed:       { label: "Completed",          color: "#2563eb", bg: "#dbeafe", icon: "fa-flag-checkered" },
-};
-
-const ALL_STATUSES = Object.keys(STATUS_CONFIG);
-
-const REJECTION_REASONS = {
-  1: "Equipment not available on these dates",
-  2: "Equipment under maintenance/repair",
-  3: "Location too far",
-  4: "Booking duration too short/long",
-  5: "Other",
-};
+// ── Debounce hook ──
+function useDebounce(value, delay) {
+    const [debounced, setDebounced] = useState(value);
+    useEffect(() => {
+        const t = setTimeout(() => setDebounced(value), delay);
+        return () => clearTimeout(t);
+    }, [value, delay]);
+    return debounced;
+}
 
 const BookingHistory = () => {
   const [tab, setTab] = useState("customer");
@@ -52,15 +26,37 @@ const BookingHistory = () => {
   const [loading, setLoading] = useState(true);
   const [activeStatus, setActiveStatus] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const [ownerPendingCount, setOwnerPendingCount] = useState(0);
 
   // Quick-action state
-  const [actionLoading, setActionLoading] = useState(null); // booking id being acted on
-  const [showRejectModal, setShowRejectModal] = useState(null); // booking item for rejection
+  const [actionLoading, setActionLoading] = useState(null);
+  const [showRejectModal, setShowRejectModal] = useState(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionNote, setRejectionNote] = useState("");
   const [actionError, setActionError] = useState("");
   const [actionSuccess, setActionSuccess] = useState("");
+
+  // Auto-dismiss timers
+  const errorTimer = useRef(null);
+  const successTimer = useRef(null);
+
+  const setErrorWithDismiss = useCallback((msg) => {
+    setActionError(msg);
+    clearTimeout(errorTimer.current);
+    errorTimer.current = setTimeout(() => setActionError(""), 6000);
+  }, []);
+
+  const setSuccessWithDismiss = useCallback((msg) => {
+    setActionSuccess(msg);
+    clearTimeout(successTimer.current);
+    successTimer.current = setTimeout(() => setActionSuccess(""), 5000);
+  }, []);
+
+  useEffect(() => () => {
+    clearTimeout(errorTimer.current);
+    clearTimeout(successTimer.current);
+  }, []);
 
   useEffect(() => {
     if (!Cookies.get("access-token")) navigate("/");
@@ -73,7 +69,7 @@ const BookingHistory = () => {
       const pending = ownerData.filter(b => b.status === "Pending").length;
       setOwnerPendingCount(pending);
     }).catch(() => {});
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchCustomerBookings() {
     setLoading(true);
@@ -81,7 +77,7 @@ const BookingHistory = () => {
       const { data } = await getBooking();
       setBookings(data?.results || data || []);
     } catch (err) {
-      console.log("Error fetching customer bookings:", err);
+      console.error("Error fetching customer bookings:", err);
       setBookings([]);
     } finally {
       setLoading(false);
@@ -98,7 +94,7 @@ const BookingHistory = () => {
       setBookings(ownerData);
       setOwnerPendingCount(ownerData.filter(b => b.status === "Pending").length);
     } catch (err) {
-      console.log("Error fetching owner bookings:", err);
+      console.error("Error fetching owner bookings:", err);
       setBookings([]);
     } finally {
       setLoading(false);
@@ -117,11 +113,10 @@ const BookingHistory = () => {
 
   // ── Quick Actions ──
   const handleQuickAccept = async (item) => {
-    // ── Frontend guard: check if booking window has passed ──
     const endDate = item.end_date ? new Date(item.end_date + 'T00:00:00') : null;
     const today = new Date(); today.setHours(0, 0, 0, 0);
     if (endDate && today > endDate) {
-      setActionError(`Cannot accept — the booking window has passed (ended ${item.end_date}). Please decline it instead.`);
+      setErrorWithDismiss(`Cannot accept — the booking window has passed (ended ${item.end_date}). Please decline it instead.`);
       return;
     }
     if (!window.confirm(`Accept booking ${item.booking_id} from ${item.customer?.first_name} ${item.customer?.last_name}?`)) return;
@@ -130,18 +125,18 @@ const BookingHistory = () => {
     setActionSuccess("");
     try {
       await BookingUpdate("Accepted", item.id);
-      setActionSuccess(`Booking ${item.booking_id} has been confirmed.`);
+      setSuccessWithDismiss(STATUS_SUCCESS_MESSAGES.Accepted);
       fetchOwnerBookings();
     } catch (err) {
-      setActionError(extractErrorMsg(err));
+      setErrorWithDismiss(extractErrorMsg(err));
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleQuickReject = async () => {
-    if (!rejectionReason) { setActionError("Please select a reason."); return; }
-    if (parseInt(rejectionReason) === 5 && !rejectionNote.trim()) { setActionError("Please provide a note for 'Other'."); return; }
+    if (!rejectionReason) { setErrorWithDismiss("Please select a reason."); return; }
+    if (parseInt(rejectionReason) === 5 && !rejectionNote.trim()) { setErrorWithDismiss("Please provide a note for 'Other'."); return; }
     setActionLoading(showRejectModal.id);
     setActionError("");
     try {
@@ -149,32 +144,39 @@ const BookingHistory = () => {
         rejection_reason: parseInt(rejectionReason),
         rejection_note: rejectionNote,
       });
-      setActionSuccess(`Booking ${showRejectModal.booking_id} has been declined.`);
+      setSuccessWithDismiss(STATUS_SUCCESS_MESSAGES.Rejected);
       setShowRejectModal(null);
       setRejectionReason("");
       setRejectionNote("");
       fetchOwnerBookings();
     } catch (err) {
-      setActionError(extractErrorMsg(err));
+      setErrorWithDismiss(extractErrorMsg(err));
     } finally {
       setActionLoading(null);
     }
   };
 
-  // ── Filtered data ──
+  // ── Helper to get manufacturer name from nested object or string ──
+  const getManufacturerName = (equipment) => {
+    if (!equipment?.manufacturer) return "";
+    if (typeof equipment.manufacturer === "object") return equipment.manufacturer.name || "";
+    return equipment.manufacturer;
+  };
+
+  // ── Filtered data (uses debounced search) ──
   const filtered = useMemo(() => {
     return bookings.filter((item) => {
       const matchStatus = activeStatus === "All" || item.status === activeStatus;
-      const q = searchQuery.toLowerCase();
+      const q = debouncedSearch.toLowerCase();
       const matchSearch = !q ||
         item.booking_id?.toLowerCase().includes(q) ||
         item.equipment?.title?.toLowerCase().includes(q) ||
-        item.equipment?.manufacturer?.toLowerCase().includes(q) ||
+        getManufacturerName(item.equipment).toLowerCase().includes(q) ||
         item.customer?.first_name?.toLowerCase().includes(q) ||
         item.customer?.last_name?.toLowerCase().includes(q);
       return matchStatus && matchSearch;
     });
-  }, [bookings, activeStatus, searchQuery]);
+  }, [bookings, activeStatus, debouncedSearch]);
 
   // ── Stats ──
   const pendingCount = bookings.filter(b => b.status === "Pending").length;
@@ -196,6 +198,23 @@ const BookingHistory = () => {
     ALL_STATUSES.forEach(s => { counts[s] = bookings.filter(b => b.status === s).length; });
     return counts;
   }, [bookings]);
+
+  // ── Skeleton Loader ──
+  const SkeletonRows = () => (
+    <div className="bh-skeleton-wrap">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="bh-skeleton-row">
+          <div className="bh-skel bh-skel-date" />
+          <div className="bh-skel bh-skel-id" />
+          <div className="bh-skel bh-skel-name" />
+          <div className="bh-skel bh-skel-period" />
+          <div className="bh-skel bh-skel-cost" />
+          <div className="bh-skel bh-skel-badge" />
+          <div className="bh-skel bh-skel-btn" />
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <div className="bh-page">
@@ -246,8 +265,24 @@ const BookingHistory = () => {
         </div>
 
         {/* ── Action Messages ── */}
-        {actionError && <div className="bh-action-msg error"><i className="fa-solid fa-circle-exclamation"></i> {actionError}</div>}
-        {actionSuccess && <div className="bh-action-msg success"><i className="fa-solid fa-circle-check"></i> {actionSuccess}</div>}
+        {actionError && (
+          <div className="bh-action-msg error bh-msg-animate">
+            <i className="fa-solid fa-circle-exclamation"></i>
+            <span>{actionError}</span>
+            <button className="bh-msg-dismiss" onClick={() => setActionError("")}>
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        )}
+        {actionSuccess && (
+          <div className="bh-action-msg success bh-msg-animate">
+            <i className="fa-solid fa-circle-check"></i>
+            <span>{actionSuccess}</span>
+            <button className="bh-msg-dismiss" onClick={() => setActionSuccess("")}>
+              <i className="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        )}
 
         {/* ── Search + Status Pills ── */}
         <div className="bh-toolbar">
@@ -259,6 +294,11 @@ const BookingHistory = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            {searchQuery && (
+              <button className="bh-search-clear" onClick={() => setSearchQuery("")}>
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            )}
           </div>
           <div className="bh-filter-pills">
             <button
@@ -281,13 +321,8 @@ const BookingHistory = () => {
           </div>
         </div>
 
-        {/* ── Loading ── */}
-        {loading && (
-          <div className="bh-loading">
-            <div className="bh-spinner"></div>
-            <p>Loading bookings...</p>
-          </div>
-        )}
+        {/* ── Loading (Skeleton) ── */}
+        {loading && <SkeletonRows />}
 
         {/* ── Empty State ── */}
         {!loading && filtered.length === 0 && (
@@ -337,7 +372,6 @@ const BookingHistory = () => {
                   const cost = item.total_daily_rent || (item.equipment?.daily_rental ? days * item.equipment.daily_rental : 0);
                   const isPending = item.status === "Pending";
                   const isActing = actionLoading === item.id;
-                  // Check if booking window has passed (for disabling quick-accept)
                   const itemEndDate = item.end_date ? new Date(item.end_date + 'T00:00:00') : null;
                   const itemNow = new Date(); itemNow.setHours(0, 0, 0, 0);
                   const isWindowPassed = itemEndDate ? itemNow > itemEndDate : false;
@@ -376,7 +410,6 @@ const BookingHistory = () => {
                         </span>
                       </td>
                       <td className="bh-td-actions">
-                        {/* Owner pending: show inline quick actions */}
                         {tab === "owner" && isPending ? (
                           <div className="bh-inline-actions">
                             <button

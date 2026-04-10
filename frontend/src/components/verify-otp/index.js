@@ -1,20 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import Cookies from "js-cookie";
+import "../../pages/auth.css";
 
-import InputField from "../input/InputField";
 import logo from "../../img/logo.png";
-import cross_black from "../../img/cross_black.svg";
-
-import { verifyOtp, verifyOtpLogin } from "../../api/authAPI";
+import { verifyOtp, verifyOtpLogin, resendOtpSignup, resendOtpLogin } from "../../api/authAPI";
+import { getProfile } from "../../api/profileAPI";
 import {
   getLoginAction,
   getSaveTokenAction,
   getSaveProfileAction
 } from "../../redux/actions";
 
-/** Safe message from API error - never show raw HTML */
+/** Safe message from API error */
 function getErrorMessage(err) {
   if (!err) return "Something went wrong. Please try again.";
   if (typeof err === "string") {
@@ -25,13 +24,23 @@ function getErrorMessage(err) {
 }
 
 const STORAGE_KEYS = { signup: "otp_phone_number", login: "login_otp_phone" };
+const RESEND_COOLDOWN = 30;
+const OTP_LENGTH = 6;
 
 const VerifyOTP = () => {
-  const [OTP, setOTP] = useState("");
+  const [digits, setDigits] = useState(Array(OTP_LENGTH).fill(""));
   const [phone_number, setPhoneNumber] = useState("");
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendMessage, setResendMessage] = useState("");
+  const [resending, setResending] = useState(false);
+  const [otpError, setOtpError] = useState(false);
+
+  const inputRefs = useRef([]);
+  const timerRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
@@ -45,141 +54,288 @@ const VerifyOTP = () => {
       return;
     }
     setPhoneNumber(storedPhoneNumber);
+    setResendCooldown(RESEND_COOLDOWN);
+    // Focus first digit
+    setTimeout(() => inputRefs.current[0]?.focus(), 100);
   }, [navigate, storageKey, isLoginFlow]);
 
+  // Cooldown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      timerRef.current = setTimeout(() => {
+        setResendCooldown((c) => c - 1);
+      }, 1000);
+    }
+    return () => clearTimeout(timerRef.current);
+  }, [resendCooldown]);
 
-  async function verify(e) {
+  // Mask phone number
+  const maskedPhone = phone_number
+    ? phone_number.slice(0, 2) + "****" + phone_number.slice(-4)
+    : "";
+
+  // ── Digit Input Handlers ──
+  const handleDigitChange = (index, value) => {
+    if (value && !/^\d$/.test(value)) return;
+
+    setOtpError(false);
+    const newDigits = [...digits];
+    newDigits[index] = value;
+    setDigits(newDigits);
+
+    // Auto-advance to next box
+    if (value && index < OTP_LENGTH - 1) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-submit when all filled
+    if (value && index === OTP_LENGTH - 1) {
+      const fullOtp = newDigits.join("");
+      if (fullOtp.length === OTP_LENGTH) {
+        handleVerify(fullOtp);
+      }
+    }
+  };
+
+  const handleKeyDown = (index, e) => {
+    if (e.key === "Backspace" && !digits[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e) => {
     e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LENGTH);
+    if (!pasted) return;
+    const newDigits = Array(OTP_LENGTH).fill("");
+    for (let i = 0; i < pasted.length; i++) {
+      newDigits[i] = pasted[i];
+    }
+    setDigits(newDigits);
+    setOtpError(false);
+    if (pasted.length === OTP_LENGTH) {
+      inputRefs.current[OTP_LENGTH - 1]?.focus();
+      handleVerify(pasted);
+    } else {
+      inputRefs.current[pasted.length]?.focus();
+    }
+  };
+
+  // ── Resend OTP ──
+  const handleResendOtp = useCallback(async () => {
+    if (resendCooldown > 0 || resending || !phone_number) return;
+    setResending(true);
+    setResendMessage("");
+    setError(false);
+    setErrorMessage("");
+    try {
+      const resendFn = isLoginFlow ? resendOtpLogin : resendOtpSignup;
+      await resendFn({ phone_number });
+      setResendMessage("OTP resent successfully!");
+      setResendCooldown(RESEND_COOLDOWN);
+      setDigits(Array(OTP_LENGTH).fill(""));
+      inputRefs.current[0]?.focus();
+    } catch (err) {
+      const msg = getErrorMessage(err);
+      if (msg.toLowerCase().includes("limit") || msg.toLowerCase().includes("blocked")) {
+        setResendMessage("Too many attempts. Please wait a moment.");
+      } else {
+        setResendMessage("Failed to resend OTP. Try again.");
+      }
+    } finally {
+      setResending(false);
+    }
+  }, [resendCooldown, resending, phone_number, isLoginFlow]);
+
+  // ── Verify OTP ──
+  async function handleVerify(otpCode) {
+    const otp = otpCode || digits.join("");
     setErrorMessage("");
     setError(false);
+    setResendMessage("");
+
     if (!phone_number) {
       setError(true);
-      setErrorMessage("Session expired. Please register again.");
+      setErrorMessage(isLoginFlow ? "Session expired. Please login again." : "Session expired. Please register again.");
       return;
     }
-    if (!OTP || OTP.trim().length < 4) {
+    if (otp.length < OTP_LENGTH) {
       setError(true);
-      setErrorMessage("Please enter the OTP sent to your mobile.");
+      setErrorMessage("Please enter the complete OTP.");
       return;
     }
+
+    setLoading(true);
     try {
       const apiCall = isLoginFlow ? verifyOtpLogin : verifyOtp;
-      const data = await apiCall({ phone_number: phone_number, otp: OTP });
+      const data = await apiCall({ phone_number, otp });
       if (data.success) {
         setSuccess(true);
         sessionStorage.removeItem(storageKey);
         if (isLoginFlow) {
-          // Save tokens and user data for login (same as Login.js saveData)
           const tokens = data.data?.tokens || {};
           const uuid = data.data?.uuid;
           Cookies.set("access-token", tokens.access, {
-            path: "/",
-            expires: new Date(Date.now() + 24 * 60 * 60 * 1000)
+            path: "/", expires: new Date(Date.now() + 24 * 60 * 60 * 1000)
           });
           Cookies.set("refresh-token", tokens.refresh, {
-            path: "/",
-            expires: new Date(Date.now() + 24 * 60 * 60 * 1000)
+            path: "/", expires: new Date(Date.now() + 24 * 60 * 60 * 1000)
           });
           Cookies.set("uuid", uuid, {
-            path: "/",
-            expires: new Date(Date.now() + 24 * 60 * 60 * 1000)
+            path: "/", expires: new Date(Date.now() + 24 * 60 * 60 * 1000)
           });
           localStorage.setItem("isLoggedIn", true);
           dispatch(getLoginAction());
-          dispatch(getSaveTokenAction({
-            accessToken: tokens.access,
-            refreshToken: tokens.refresh
-          }));
-          dispatch(getSaveProfileAction(data));
+          dispatch(getSaveTokenAction({ accessToken: tokens.access, refreshToken: tokens.refresh }));
+          try {
+            const profileData = await getProfile({ uuid, accessToken: tokens.access });
+            dispatch(getSaveProfileAction(profileData));
+          } catch (_e) {
+            dispatch(getSaveProfileAction(data));
+          }
         }
         setTimeout(() => {
           navigate(isLoginFlow ? "/" : "/login", { replace: true });
         }, 1500);
       } else {
-        setOTP("");
+        setDigits(Array(OTP_LENGTH).fill(""));
+        setOtpError(true);
         setError(true);
         setErrorMessage("Wrong OTP. Please try again.");
+        inputRefs.current[0]?.focus();
       }
     } catch (err) {
-      setOTP("");
+      setDigits(Array(OTP_LENGTH).fill(""));
+      setOtpError(true);
       setError(true);
       setErrorMessage(getErrorMessage(err));
+      inputRefs.current[0]?.focus();
+    } finally {
+      setLoading(false);
     }
   }
 
-  // Don't render if phone number is not available (will redirect)
-  if (!phone_number) {
-    return null;
-  }
-
-  const handleClose = () => {
-    navigate(isLoginFlow ? "/login" : "/register");
-  };
+  if (!phone_number) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 bottom-0 z-50 min-h-screen w-full overflow-x-hidden overflow-y-auto box-border bg-[#219653]">
-      <div className="absolute top-2 right-2 z-10">
-        <img
-          src={cross_black}
-          className="cursor-pointer hover:opacity-90 bg-[#E5E5E5] rounded-full p-2 shadow-xl"
-          alt="Close"
-          onClick={handleClose}
-        />
+    <div className="auth-page">
+      {/* ── LEFT BRANDED PANEL ── */}
+      <div className="auth-brand">
+        <div className="auth-brand-content">
+          <img src={logo} alt="KrushiMitra" className="auth-brand-logo" />
+          <h1>Verify Identity</h1>
+          <p>
+            We've sent a verification code to your registered mobile number.
+            Enter the code to {isLoginFlow ? "sign in" : "complete registration"}.
+          </p>
+          <div className="auth-brand-dots">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
       </div>
-      <div className="min-h-screen w-full flex justify-center items-center p-4 sm:p-9 box-border">
-        <div
-          className="w-full max-w-md relative bg-[#219653] box-border rounded-2xl"
-          style={{
-            paddingTop: "3rem",
-            paddingBottom: "3rem",
-            paddingLeft: "1.5rem",
-            paddingRight: "1.5rem"
-          }}
-        >
-          <div className="bg-white rounded-3xl drop-shadow-md p-6 sm:p-9 pt-3 relative">
-            <form onSubmit={verify} className="flex flex-col relative">
-              <div className="absolute -top-12 left-1/2 -translate-x-1/2">
-                <img
-                  className="h-20 w-20 sm:h-24 sm:w-24 mx-auto"
-                  style={{ filter: "drop-shadow(0px 4px 4px rgba(104, 172, 93, 0.25))" }}
-                  src={logo}
-                  alt="KrushiMitra"
-                />
-              </div>
-              <h1 className="mb-5 text-center text-xl font-medium" style={{ marginTop: "3rem" }}>
-                Enter the OTP sent to your Registered Number
-              </h1>
-            <InputField
-              placeholder="OTP"
-              value={OTP}
-              onChange={(e) => setOTP(e.target.value)}
-              type="text"
-              inputMode="numeric"
-              required={true}
-            />
-            <button
-              className="px-6 py-2 mx-auto rounded-lg text-white text-lg font-semibold bg-[#219653] hover:opacity-90"
-              type="submit"
-            >
-              Verify OTP
-            </button>
-            {success && (
-              <p className="text-center text-green-400">
-                OTP verified successfully!
+
+      {/* ── RIGHT FORM PANEL ── */}
+      <div className="auth-form-panel">
+        <div className="auth-form-card" style={{ textAlign: "center" }}>
+          <button
+            className="auth-close-btn"
+            onClick={() => navigate(isLoginFlow ? "/login" : "/register")}
+            aria-label="Close"
+          >
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+
+          <div style={{ marginBottom: 8 }}>
+            <i className="fa-solid fa-shield-halved" style={{ fontSize: 48, color: "#219653", opacity: 0.8 }}></i>
+          </div>
+          <h2>Enter Verification Code</h2>
+          <p className="auth-subtitle">
+            We've sent a {OTP_LENGTH}-digit code to <strong>{maskedPhone}</strong>
+          </p>
+
+          {/* Messages */}
+          {success && (
+            <div className="auth-message success">
+              <i className="fa-solid fa-circle-check"></i>
+              <span>OTP verified successfully! Redirecting...</span>
+            </div>
+          )}
+          {error && errorMessage && (
+            <div className="auth-message error">
+              <i className="fa-solid fa-circle-exclamation"></i>
+              <span>{errorMessage}</span>
+            </div>
+          )}
+
+          {/* ── OTP Digit Boxes ── */}
+          <div className="otp-digits" onPaste={handlePaste}>
+            {digits.map((digit, i) => (
+              <input
+                key={i}
+                ref={(el) => (inputRefs.current[i] = el)}
+                className={`otp-digit ${digit ? "filled" : ""} ${otpError ? "error" : ""}`}
+                type="text"
+                inputMode="numeric"
+                maxLength={1}
+                value={digit}
+                onChange={(e) => handleDigitChange(i, e.target.value)}
+                onKeyDown={(e) => handleKeyDown(i, e)}
+                disabled={loading || success}
+                aria-label={`Digit ${i + 1}`}
+                autoComplete="one-time-code"
+              />
+            ))}
+          </div>
+
+          {/* Verify button */}
+          <button
+            className="auth-btn auth-btn-primary"
+            onClick={() => handleVerify()}
+            disabled={loading || success || digits.join("").length < OTP_LENGTH}
+            style={{ marginBottom: 20 }}
+          >
+            {loading ? (
+              <><span className="auth-spinner"></span> Verifying...</>
+            ) : success ? (
+              <><i className="fa-solid fa-check"></i> Verified!</>
+            ) : (
+              "Verify OTP"
+            )}
+          </button>
+
+          {/* ── Resend Section ── */}
+          <div className="auth-timer">
+            <p style={{ color: "#6b7280", marginBottom: 8 }}>Didn&apos;t receive the code?</p>
+            {resendCooldown > 0 ? (
+              <p>Resend available in <strong>{resendCooldown}s</strong></p>
+            ) : (
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={resending}
+                className="auth-timer-btn"
+              >
+                {resending ? "Sending..." : "Resend OTP"}
+              </button>
+            )}
+            {resendMessage && (
+              <p style={{
+                fontSize: 12,
+                marginTop: 8,
+                fontWeight: 600,
+                color: resendMessage.includes("success") ? "#16a34a" : "#f59e0b"
+              }}>
+                {resendMessage}
               </p>
             )}
-            {error && errorMessage && (
-              <p className="text-center text-red-500 text-sm mt-2">
-                {errorMessage}
-              </p>
-            )}
-          </form>
-            <p className="my-5 text-center text-sm">
-              Didn&apos;t receive OTP?{" "}
-              <Link to={isLoginFlow ? "/login" : "/register"} className="text-blue-600 underline">
-                Back to {isLoginFlow ? "Login" : "Register"}
-              </Link>
-            </p>
+          </div>
+
+          {/* Back link */}
+          <div className="auth-link-row">
+            <Link to={isLoginFlow ? "/login" : "/register"}>
+              <i className="fa-solid fa-arrow-left" style={{ marginRight: 4 }}></i>
+              Back to {isLoginFlow ? "Login" : "Register"}
+            </Link>
           </div>
         </div>
       </div>

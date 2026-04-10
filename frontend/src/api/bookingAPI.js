@@ -1,7 +1,9 @@
-// import axios from "axios";
 import instance from "./config";
 import Cookies from "js-cookie";
 
+/**
+ * Get bookings where the current user is the CUSTOMER.
+ */
 export const getBooking = async () => {
   try {
     const headers = {
@@ -10,11 +12,14 @@ export const getBooking = async () => {
     };
     return await instance.get("/api/booking/", { headers });
   } catch (error) {
-    console.log("Error while calling getBookings API", error);
+    console.error("Error fetching customer bookings:", error);
     throw error;
   }
 };
 
+/**
+ * Get bookings where the current user is the EQUIPMENT OWNER.
+ */
 export const getBookingOwner = async () => {
   try {
     const headers = {
@@ -23,11 +28,17 @@ export const getBookingOwner = async () => {
     };
     return await instance.get("/api/booking/request/", { headers });
   } catch (error) {
-    console.log("Error while calling getBookings API", error);
+    console.error("Error fetching owner bookings:", error);
     throw error;
   }
 };
 
+/**
+ * Create a new booking request.
+ * @param {number} equipment - Equipment ID
+ * @param {string} start_date - ISO date string (YYYY-MM-DD)
+ * @param {string} end_date - ISO date string (YYYY-MM-DD)
+ */
 export const createBooking = async (equipment, start_date, end_date) => {
   try {
     const headers = {
@@ -36,19 +47,19 @@ export const createBooking = async (equipment, start_date, end_date) => {
     };
     return await instance.post(
       "/api/booking/create/",
-      {
-        equipment,
-        start_date,
-        end_date,
-      },
+      { equipment, start_date, end_date },
       { headers }
     );
   } catch (error) {
-    console.log("Error while calling createBooking API", error);
+    console.error("Error creating booking:", error);
     throw error;
   }
 };
 
+/**
+ * Get detailed booking information by booking PK.
+ * @param {number} id - Booking primary key
+ */
 export const getBookingDetail = async (id) => {
   try {
     const headers = {
@@ -57,20 +68,7 @@ export const getBookingDetail = async (id) => {
     };
     return await instance.get(`/api/booking/detail/${id}/`, { headers });
   } catch (error) {
-    console.log("Error while calling getBookingDetail API", error);
-    throw error;
-  }
-};
-
-export const BookingListRequest = async () => {
-  try {
-    const headers = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${Cookies.get("access-token")}`,
-    };
-    return await instance.get("/api/booking/request/", { headers });
-  } catch (error) {
-    console.log("Error while calling BookingListRequest API", error);
+    console.error("Error fetching booking detail:", error);
     throw error;
   }
 };
@@ -98,7 +96,7 @@ export const BookingUpdate = async (status, id, extras = {}) => {
       { headers }
     );
   } catch (error) {
-    console.log("Error while calling BookingUpdate API", error);
+    console.error("Error updating booking:", error);
     throw error;
   }
 };
@@ -114,7 +112,7 @@ export const getBlockedDates = async (equipmentId) => {
   try {
     return await instance.get(`/api/booking/blocked-dates/${equipmentId}/`);
   } catch (error) {
-    console.log("Error while calling getBlockedDates API", error);
+    console.error("Error fetching blocked dates:", error);
     return { data: [] };
   }
 };
@@ -129,7 +127,7 @@ export const getOwnerStats = async (ownerId) => {
   try {
     return await instance.get(`/api/booking/owner-stats/${ownerId}/`);
   } catch (error) {
-    console.log("Error while calling getOwnerStats API", error);
+    console.error("Error fetching owner stats:", error);
     return null;
   }
 };

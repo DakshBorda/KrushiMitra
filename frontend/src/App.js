@@ -9,8 +9,7 @@ import {
   getSaveProfileAction,
   getSaveTokenAction
 } from "./redux/actions";
-// import ProtectedRoute from "./components/ProtectedRoute";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import SupportAdmin from "./components/ChatSupport/SupportAdmin/index";
 import SupportEngine from "./components/ChatSupport/SupportEngine/index";
 import Cookies from "js-cookie";
@@ -37,11 +36,19 @@ import EquipmentReport from "./pages/EquipmentReport";
 import MyEquipment from "./pages/myEquipment/MyEquipment";
 import Notifications from "./pages/notifications/Notifications";
 import NotFound from "./pages/NotFound";
+import ForgotPassword from "./pages/ForgotPassword";
 import Footer from "./components/footer/Footer";
+
+// Auth routes where Header/Footer/Support should be hidden
+const AUTH_ROUTES = ["/login", "/register", "/verify-otp", "/login/verify-otp", "/forgot-password"];
 
 function App() {
   const tokenState = useSelector((state) => state.tokenReducer);
   const dispatch = useDispatch();
+  const location = useLocation();
+
+  // Check if current route is an auth page
+  const isAuthPage = AUTH_ROUTES.includes(location.pathname);
 
   useEffect(() => {
     const access = Cookies.get("access-token");
@@ -57,14 +64,18 @@ function App() {
   useEffect(() => {
     async function loadProfile() {
       const access = Cookies.get("access-token");
-      if (access) {
-        const uuid = Cookies.get("uuid");
+      const uuid = Cookies.get("uuid");
+      if (access && uuid) {
         dispatch(getLoginAction());
-        const data = await getProfile({
-          uuid: uuid,
-          accessToken: access
-        });
-        dispatch(getSaveProfileAction(data));
+        try {
+          const data = await getProfile({
+            uuid: uuid,
+            accessToken: access
+          });
+          dispatch(getSaveProfileAction(data));
+        } catch (err) {
+          console.log("Failed to restore profile session:", err);
+        }
       }
     }
     loadProfile();
@@ -72,12 +83,7 @@ function App() {
 
   return (
     <>
-      {/*       
-      <p id="transcript">Transcript: {transcript}</p>
-
-      <button onClick={SpeechRecognition.startListening}>Start</button> */}
-      {/* <PreHeader /> */}
-      <Header />
+      {!isAuthPage && <Header />}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/home" element={<Navigate to="/" replace />} />
@@ -85,6 +91,7 @@ function App() {
         <Route path="/login/verify-otp" element={<VerifyOTP />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-otp" element={<VerifyOTP />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/help" element={<Help />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/addProduct" element={<AddProduct />} />
@@ -105,8 +112,8 @@ function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
 
-      <Footer />
-      <SupportEngine />
+      {!isAuthPage && <Footer />}
+      {!isAuthPage && <SupportEngine />}
     </>
   );
 }

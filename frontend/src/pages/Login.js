@@ -2,17 +2,14 @@ import React, { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate, Link } from "react-router-dom";
 import Cookies from "js-cookie";
+import "./auth.css";
 
-//Components
-import InputField from "../components/input/InputField";
-import Loader from "../components/loader/";
-
-//Functions
 import { SuccessMsg, ErrorMsg } from "../components/alerts";
 import {
   postLoginDataEmail,
   postLoginDataPhone
 } from "../api/authAPI";
+import { getProfile } from "../api/profileAPI";
 import {
   getLoginAction,
   getSaveTokenAction,
@@ -20,7 +17,6 @@ import {
 } from "../redux/actions";
 import { isEmail, isEmpty, isPhoneNumber } from "../utils/validation";
 import logo from "../img/logo.png";
-import cross_black from "../img/cross_black.svg";
 
 /** Get display message from API error (never show raw HTML) */
 function getErrorMessage(err) {
@@ -37,22 +33,22 @@ function getErrorMessage(err) {
   if (emailErr) {
     if (typeof emailErr === "string") return emailErr;
     if (emailErr.msg) return emailErr.msg;
-    if (emailErr.message) return emailErr.message;
   }
 
   const pwdErr = err?.password?.[0];
   if (pwdErr) {
     if (typeof pwdErr === "string") return pwdErr;
     if (pwdErr.msg) return pwdErr.msg;
-    if (pwdErr.message) return pwdErr.message;
   }
 
   return "Invalid email or password";
 }
 
-const Login = ({ onClick }) => {
+const Login = () => {
+  const [activeTab, setActiveTab] = useState("email");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [phone_number, setPhoneNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -61,13 +57,12 @@ const Login = ({ onClick }) => {
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const isPageRoute = typeof onClick !== "function";
 
   useEffect(() => {
-    if (isPageRoute && Cookies.get("refresh-token")) {
+    if (Cookies.get("refresh-token")) {
       navigate("/", { replace: true });
     }
-  }, [isPageRoute, navigate]);
+  }, [navigate]);
 
   async function handleEmailLogin(e) {
     e.preventDefault();
@@ -97,11 +92,11 @@ const Login = ({ onClick }) => {
       setSuccess(false);
       setError(true);
       setMessage(getErrorMessage(err));
-      console.log("Email login error:", err);
     }
   }
 
-  async function handleLoginPhone() {
+  async function handleLoginPhone(e) {
+    e.preventDefault();
     setMessage("");
     setError(false);
     if (isEmpty(phone_number)) {
@@ -116,7 +111,7 @@ const Login = ({ onClick }) => {
     }
     setLoading(true);
     try {
-      const data = await postLoginDataPhone({ phone_number: phone_number });
+      const data = await postLoginDataPhone({ phone_number });
       if (data.success) {
         sessionStorage.setItem("login_otp_phone", phone_number);
         setLoading(false);
@@ -127,7 +122,6 @@ const Login = ({ onClick }) => {
       setLoading(false);
       setError(true);
       setMessage(getErrorMessage(err) || "Server issue. Try again later.");
-      console.log(err);
     }
   }
 
@@ -143,13 +137,10 @@ const Login = ({ onClick }) => {
       path: "/",
       expires: new Date().setDate(new Date().getDate() + 1)
     });
-    console.log(data);
     Cookies.set("uuid", data.data.uuid, {
       path: "/",
       expires: new Date().setDate(new Date().getDate() + 1)
     });
-    Cookies.set("user", data);
-    console.log(Cookies.get("user"));
     dispatch(getLoginAction());
     dispatch(
       getSaveTokenAction({
@@ -157,135 +148,199 @@ const Login = ({ onClick }) => {
         refreshToken: data.data.tokens.refresh
       })
     );
-    dispatch(getSaveProfileAction(data));
+
+    try {
+      const profileData = await getProfile({
+        uuid: data.data.uuid,
+        accessToken: data.data.tokens.access,
+      });
+      dispatch(getSaveProfileAction(profileData));
+    } catch (err) {
+      dispatch(getSaveProfileAction(data));
+    }
+
     setLoading(false);
     navigate("/");
   }
 
-  const handleClose = () => {
-    if (typeof onClick === "function") onClick(false);
-    else navigate("/");
-  };
-
   return (
-    <div className="fixed top-0 left-0 right-0 bottom-0 z-50 w-full bg-[#219653] min-h-screen overflow-y-auto">
-      {success && (
-        <SuccessMsg
-          msg={message}
-          onClose={() => {
-            setSuccess(false);
-            setMessage("");
-          }}
-        />
-      )}
-      {error && message && (
-        <ErrorMsg
-          msg={message}
-          onClose={() => {
-            setError(false);
-            setMessage("");
-          }}
-        />
-      )}
-      <div className="absolute top-2 right-2 z-10">
-        <img
-          src={cross_black}
-          className="cursor-pointer hover:opacity-90 bg-[#E5E5E5] rounded-full p-2 shadow-xl"
-          alt="Close"
-          onClick={handleClose}
-        />
+    <div className="auth-page">
+      {/* ── LEFT BRANDED PANEL ── */}
+      <div className="auth-brand">
+        <div className="auth-brand-content">
+          <img src={logo} alt="KrushiMitra" className="auth-brand-logo" />
+          <h1>KrushiMitra</h1>
+          <p>
+            India's trusted platform for renting farm equipment.
+            Connect with equipment owners in your area and grow your harvest.
+          </p>
+          <div className="auth-brand-dots">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
       </div>
-      {loading && <Loader />}
 
-      {/* LOGIN FORM */}
-
-      <div className={`${loading && "blur-sm"} flex flex-col min-h-screen w-full box-border`}>
-        <div className="flex justify-center py-6 sm:py-9 px-4 rounded-2xl box-border w-full">
-          <div
-            className="w-full max-w-md relative bg-[#219653] box-border rounded-2xl"
-            style={{
-              paddingTop: "3rem",
-              paddingBottom: "3rem",
-              paddingLeft: "1.5rem",
-              paddingRight: "1.5rem"
-            }}
+      {/* ── RIGHT FORM PANEL ── */}
+      <div className="auth-form-panel">
+        <div className="auth-form-card">
+          <button
+            className="auth-close-btn"
+            onClick={() => navigate("/")}
+            aria-label="Close"
           >
-            <form
-              onSubmit={handleEmailLogin}
-              className="bg-white mx-auto relative p-6 sm:p-9 pt-3 drop-shadow-md rounded-3xl flex flex-col justify-center text-center w-full max-w-lg box-border"
-              style={{ maxWidth: "28rem" }}
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+
+          <h2>Welcome Back</h2>
+          <p className="auth-subtitle">Sign in to your account to continue</p>
+
+          {/* Success/Error messages */}
+          {success && message && (
+            <div className="auth-message success">
+              <i className="fa-solid fa-circle-check"></i>
+              <span>{message}</span>
+            </div>
+          )}
+          {error && message && (
+            <div className="auth-message error">
+              <i className="fa-solid fa-circle-exclamation"></i>
+              <span>{message}</span>
+            </div>
+          )}
+
+          {/* Tabs */}
+          <div className="auth-tabs">
+            <button
+              className={`auth-tab ${activeTab === "email" ? "active" : ""}`}
+              onClick={() => { setActiveTab("email"); setError(false); setMessage(""); }}
             >
-              <div className="absolute -top-12 float-center flex flex-col left-1/2 -translate-x-1/2">
-                <img
-                  className="h-24 w-24 border-full mx-auto"
-                  style={{
-                    filter: "drop-shadow(0px 4px 4px rgba(104, 172, 93, 0.25))"
-                  }}
-                  src={logo}
-                  alt="logo"
-                />
+              <i className="fa-solid fa-envelope" style={{ marginRight: 6 }}></i>
+              Email
+            </button>
+            <button
+              className={`auth-tab ${activeTab === "phone" ? "active" : ""}`}
+              onClick={() => { setActiveTab("phone"); setError(false); setMessage(""); }}
+            >
+              <i className="fa-solid fa-mobile-screen" style={{ marginRight: 6 }}></i>
+              Mobile OTP
+            </button>
+          </div>
+
+          {/* ── EMAIL LOGIN FORM ── */}
+          {activeTab === "email" && (
+            <form onSubmit={handleEmailLogin} noValidate>
+              <div className="auth-field">
+                <label htmlFor="login-email">
+                  Email Address <span className="required-star">*</span>
+                </label>
+                <div className="auth-input-wrap">
+                  <i className="fa-solid fa-envelope auth-input-icon"></i>
+                  <input
+                    id="login-email"
+                    className="auth-input"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    aria-label="Email address"
+                  />
+                </div>
               </div>
-              <h1 className="text-2xl font-bold" style={{ marginTop: "3rem" }}>
-                Login Here
-              </h1>
-              <p className="font mb-4">Login Using Email</p>
-              <InputField
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                type="text"
-              />
-              <InputField
-                placeholder="Password*"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type="password"
-              />
+
+              <div className="auth-field">
+                <label htmlFor="login-password">
+                  Password <span className="required-star">*</span>
+                </label>
+                <div className="auth-input-wrap">
+                  <i className="fa-solid fa-lock auth-input-icon"></i>
+                  <input
+                    id="login-password"
+                    className="auth-input"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    aria-label="Password"
+                  />
+                  <button
+                    type="button"
+                    className="auth-pwd-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label="Toggle password visibility"
+                  >
+                    <i className={`fa-solid ${showPassword ? "fa-eye-slash" : "fa-eye"}`}></i>
+                  </button>
+                </div>
+              </div>
+
+              <div className="auth-forgot-link">
+                <Link to="/forgot-password" className="auth-link">Forgot Password?</Link>
+              </div>
+
               <button
-                className="px-6 py-1 w-32 mx-auto rounded-lg text-white text-xl font-semibold bg-[#219653] hover:opacity-90"
+                className="auth-btn auth-btn-primary"
                 type="submit"
+                disabled={loading}
               >
-                Login
+                {loading ? (
+                  <><span className="auth-spinner"></span> Signing in...</>
+                ) : (
+                  "Sign In"
+                )}
               </button>
-              <div
-                className="flex flex-col my-7 relative"
-                style={{ borderTop: "1px solid #4F4F4F" }}
-              >
-                <h1
-                  className="rounded-full bg-white w-10 text-center p-2 absolute left-1/2 -top-6 -translate-x-1/2"
-                  style={{ boxShadow: "0px 4px 4px rgba(0, 0, 0, 0.25)" }}
-                >
-                  OR
-                </h1>
+            </form>
+          )}
+
+          {/* ── PHONE OTP LOGIN FORM ── */}
+          {activeTab === "phone" && (
+            <form onSubmit={handleLoginPhone} noValidate>
+              <div className="auth-field">
+                <label htmlFor="login-phone">
+                  Mobile Number <span className="required-star">*</span>
+                </label>
+                <div className="auth-input-wrap">
+                  <i className="fa-solid fa-phone auth-input-icon"></i>
+                  <input
+                    id="login-phone"
+                    className="auth-input"
+                    type="tel"
+                    placeholder="Enter 10-digit mobile number"
+                    value={phone_number}
+                    onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    autoComplete="tel"
+                    aria-label="Mobile number"
+                    maxLength={10}
+                  />
+                </div>
               </div>
-              <p className="mb-3">Login Using Mobile No.</p>
-              <InputField
-                placeholder="Mobile No."
-                value={phone_number}
-                onChange={(e) => {
-                  setPhoneNumber(e.target.value);
-                }}
-                type="text"
-              />
-              <button
-                type="button"
-                className="px-6 py-1 mx-auto rounded-lg text-white text-xl font-semibold bg-[#219653] hover:opacity-90"
-                onClick={() => handleLoginPhone()}
-              >
-                Login with OTP
-              </button>
-              {phone_number && (
-                <p className="my-3 text-sm">
-                  An OTP will be sent to your mobile number. You&apos;ll be taken to verify it.
+
+              {phone_number.length === 10 && (
+                <p style={{ fontSize: 13, color: "#6b7280", margin: "-8px 0 16px", paddingLeft: 2 }}>
+                  <i className="fa-solid fa-info-circle" style={{ marginRight: 4 }}></i>
+                  An OTP will be sent to this number for verification.
                 </p>
               )}
-              <p className="mt-4 text-center text-sm">
-                New user?{" "}
-                <Link to="/register" className="text-[#219653] font-semibold underline">
-                  Sign up
-                </Link>
-              </p>
+
+              <button
+                className="auth-btn auth-btn-primary"
+                type="submit"
+                disabled={loading}
+              >
+                {loading ? (
+                  <><span className="auth-spinner"></span> Sending OTP...</>
+                ) : (
+                  <>Send OTP <i className="fa-solid fa-arrow-right"></i></>
+                )}
+              </button>
             </form>
+          )}
+
+          {/* ── Footer link ── */}
+          <div className="auth-link-row">
+            Don&apos;t have an account?{" "}
+            <Link to="/register">Create Account</Link>
           </div>
         </div>
       </div>

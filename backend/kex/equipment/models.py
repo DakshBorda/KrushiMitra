@@ -1,9 +1,10 @@
+import uuid
+
 from django.db import models
 from kex.brand.models import Brand
 from kex.equipment_type.models import EquipmentType
 from kex.users.models import User
 from django.urls import reverse
-from django.db.models import Max
 from django.core.validators import MaxValueValidator, MinValueValidator
 
 
@@ -19,7 +20,7 @@ condition_choice = (
 
 class Equipment(models.Model):
     title = models.CharField(max_length=200)
-    eq_id = models.CharField(editable=False, max_length=10)
+    eq_id = models.CharField(editable=False, max_length=14, unique=True)
     owner = models.ForeignKey(User, on_delete=models.CASCADE)
     manufacturer = models.ForeignKey(Brand, on_delete=models.CASCADE)
     equipment_type = models.ForeignKey(EquipmentType, on_delete=models.CASCADE)
@@ -55,8 +56,8 @@ class Equipment(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.eq_id:
-            max = Equipment.objects.aggregate(id_max=Max("id"))["id_max"]
-            self.eq_id = "{}{:05d}".format("EQ", (max + 1) if max is not None else 1)
+            # Use uuid4 to guarantee unique eq_id even under concurrent requests
+            self.eq_id = "EQ" + uuid.uuid4().hex[:8].upper()
         super().save(*args, **kwargs)
 
 

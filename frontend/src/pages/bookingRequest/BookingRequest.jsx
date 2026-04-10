@@ -1,57 +1,14 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import './BookingRequest.css';
 import { getBookingDetail, BookingUpdate } from '../../api/bookingAPI';
 import { useNavigate, useParams } from 'react-router-dom';
 import Cookies from 'js-cookie';
 import { useSelector } from 'react-redux';
-
-// ── Error extraction utility — handles all DRF ValidationError shapes ──
-const extractErrorMsg = (err) => {
-    const d = err?.response?.data;
-    if (!d) return 'Something went wrong. Please try again.';
-    if (typeof d === 'string') return d;
-    if (Array.isArray(d)) return d[0];
-    if (d.detail) return d.detail;
-    if (d.message) return Array.isArray(d.message) ? d.message[0] : d.message;
-    if (d.non_field_errors) return Array.isArray(d.non_field_errors) ? d.non_field_errors[0] : d.non_field_errors;
-    // Flatten first key's first error (skip 'status' boolean)
-    const firstKey = Object.keys(d).find(k => k !== 'status');
-    if (firstKey && d[firstKey]) {
-        const val = d[firstKey];
-        return Array.isArray(val) ? val[0] : (typeof val === 'string' ? val : JSON.stringify(val));
-    }
-    return 'Failed to update booking.';
-};
-
-// ── Status configuration — clean, professional ──
-const STATUS_CONFIG = {
-    Pending:          { label: 'Pending',            color: '#d97706', bg: '#fef3c7', icon: 'fa-clock' },
-    Accepted:         { label: 'Confirmed',          color: '#16a34a', bg: '#dcfce7', icon: 'fa-circle-check' },
-    Rejected:         { label: 'Declined',           color: '#dc2626', bg: '#fee2e2', icon: 'fa-circle-xmark' },
-    AutoRejected:     { label: 'Auto Declined',      color: '#ea580c', bg: '#fed7aa', icon: 'fa-rotate' },
-    Cancelled:        { label: 'Cancelled',          color: '#6b7280', bg: '#f3f4f6', icon: 'fa-ban' },
-    CancelledByOwner: { label: 'Owner Cancelled',    color: '#be123c', bg: '#fce7f3', icon: 'fa-rectangle-xmark' },
-    Expired:          { label: 'Expired',            color: '#9ca3af', bg: '#f3f4f6', icon: 'fa-hourglass-end' },
-    Inprogress:       { label: 'In Progress',        color: '#ea580c', bg: '#fff7ed', icon: 'fa-spinner' },
-    Completed:        { label: 'Completed',          color: '#2563eb', bg: '#dbeafe', icon: 'fa-flag-checkered' },
-};
-
-const REJECTION_REASONS = {
-    1: "Equipment not available on these dates",
-    2: "Equipment under maintenance/repair",
-    3: "Location too far",
-    4: "Booking duration too short/long",
-    5: "Other",
-};
-
-const OWNER_CANCEL_REASONS = {
-    1: "Equipment breakdown",
-    2: "Personal/family emergency",
-    3: "Scheduling conflict / double booking",
-    4: "Other",
-};
-
-const TERMINAL_STATUSES = ['Completed', 'Rejected', 'AutoRejected', 'Cancelled', 'CancelledByOwner', 'Expired'];
+import { extractErrorMsg } from '../../utils/errorUtils';
+import {
+    STATUS_CONFIG, TERMINAL_STATUSES, REJECTION_REASONS,
+    OWNER_CANCEL_REASONS, STATUS_SUCCESS_MESSAGES,
+} from '../../utils/bookingConstants';
 
 // Clean stepper config — numbered steps, no emoji
 const STEP_LABELS = ['Request Sent', 'Confirmed', 'In Progress', 'Completed'];
@@ -72,6 +29,27 @@ const BookingRequest = () => {
     const [ownerCancelReason, setOwnerCancelReason] = useState('');
     const [ownerCancelNote, setOwnerCancelNote] = useState('');
 
+    // Auto-dismiss timers
+    const errorTimer = useRef(null);
+    const successTimer = useRef(null);
+
+    const setErrorWithDismiss = useCallback((msg) => {
+        setError(msg);
+        clearTimeout(errorTimer.current);
+        errorTimer.current = setTimeout(() => setError(''), 6000);
+    }, []);
+
+    const setSuccessWithDismiss = useCallback((msg) => {
+        setSuccessMsg(msg);
+        clearTimeout(successTimer.current);
+        successTimer.current = setTimeout(() => setSuccessMsg(''), 5000);
+    }, []);
+
+    useEffect(() => () => {
+        clearTimeout(errorTimer.current);
+        clearTimeout(successTimer.current);
+    }, []);
+
     const navigate = useNavigate();
     const params = useParams();
     const authState = useSelector((state) => state.authReducer);
@@ -86,10 +64,10 @@ const BookingRequest = () => {
             setLoading(true);
             getBookingDetail(params.id)
                 .then(res => setBooking(res?.data))
-                .catch(() => setError('Could not load booking details.'))
+                .catch(() => setErrorWithDismiss('Could not load booking details.'))
                 .finally(() => setLoading(false));
         }
-    }, [params.id]);
+    }, [params.id, setErrorWithDismiss]);
 
     const isOwner = currentUserId != null && booking?.owner?.id != null && String(currentUserId) === String(booking.owner.id);
     const isCustomer = currentUserId != null && booking?.customer?.id != null && String(currentUserId) === String(booking.customer.id);
@@ -143,26 +121,32 @@ const BookingRequest = () => {
         setError(''); setSuccessMsg(''); setUpdating(true);
         try {
             await BookingUpdate(newStatus, params.id, extras);
-            setSuccessMsg(`Booking has been ${newStatus.toLowerCase()}.`);
+            setSuccessWithDismiss(STATUS_SUCCESS_MESSAGES[newStatus] || `Booking has been updated.`);
             const { data } = await getBookingDetail(params.id);
             setBooking(data);
         } catch (err) {
-            setError(extractErrorMsg(err));
+            setErrorWithDismiss(extractErrorMsg(err));
         } finally { setUpdating(false); }
     };
 
     const handleReject = async () => {
-        if (!rejectionReason) { setError('Please select a rejection reason.'); return; }
-        if (parseInt(rejectionReason) === 5 && !rejectionNote.trim()) { setError('Please provide a note for "Other".'); return; }
+        if (!rejectionReason) { setErrorWithDismiss('Please select a rejection reason.'); return; }
+        if (parseInt(rejectionReason) === 5 && !rejectionNote.trim()) { setErrorWithDismiss('Please provide a note for "Other".'); return; }
         await handleStatusUpdate('Rejected', { rejection_reason: parseInt(rejectionReason), rejection_note: rejectionNote });
         setShowRejectModal(false); setRejectionReason(''); setRejectionNote('');
     };
 
     const handleOwnerCancel = async () => {
-        if (!ownerCancelReason) { setError('Please select a cancellation reason.'); return; }
-        if (parseInt(ownerCancelReason) === 4 && !ownerCancelNote.trim()) { setError('Please provide a note for "Other".'); return; }
+        if (!ownerCancelReason) { setErrorWithDismiss('Please select a cancellation reason.'); return; }
+        if (parseInt(ownerCancelReason) === 4 && !ownerCancelNote.trim()) { setErrorWithDismiss('Please provide a note for "Other".'); return; }
         await handleStatusUpdate('CancelledByOwner', { owner_cancellation_reason: parseInt(ownerCancelReason), owner_cancellation_note: ownerCancelNote });
         setShowOwnerCancelModal(false); setOwnerCancelReason(''); setOwnerCancelNote('');
+    };
+
+    // ── Accept confirmation ──
+    const handleAccept = () => {
+        if (!window.confirm('Accept this booking? The customer will be notified and the calendar will be blocked.')) return;
+        handleStatusUpdate('Accepted');
     };
 
     const deadlineInfo = booking ? getDeadlineInfo() : null;
@@ -414,7 +398,32 @@ const BookingRequest = () => {
 
     // ── Loading / Error ──
     if (loading) {
-        return <div className="br-page"><div className="br-loading"><div className="br-spinner"></div><p style={{ color: '#9ca3af' }}>Loading booking...</p></div></div>;
+        return (
+            <div className="br-page">
+                <div className="br-container">
+                    <div className="br-skeleton-topbar">
+                        <div className="br-skel br-skel-back" />
+                        <div className="br-skel br-skel-badge-lg" />
+                    </div>
+                    <div className="br-skeleton-card">
+                        <div className="br-skeleton-header">
+                            <div className="br-skel br-skel-id" />
+                            <div className="br-skel br-skel-badge" />
+                        </div>
+                        <div className="br-skeleton-body">
+                            <div className="br-skeleton-grid">
+                                <div className="br-skel br-skel-block" />
+                                <div className="br-skel br-skel-block" />
+                                <div className="br-skel br-skel-block" />
+                            </div>
+                            <div className="br-skel br-skel-line-long" />
+                            <div className="br-skel br-skel-line-md" />
+                            <div className="br-skel br-skel-line-short" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
     }
     if (!booking) {
         return (
@@ -512,8 +521,24 @@ const BookingRequest = () => {
                         </div>
 
                         {/* ── Messages ── */}
-                        {error && <div className="br-msg error"><i className="fa-solid fa-circle-exclamation" style={{ marginRight: '6px' }}></i>{error}</div>}
-                        {successMsg && <div className="br-msg success"><i className="fa-solid fa-circle-check" style={{ marginRight: '6px' }}></i>{successMsg}</div>}
+                        {error && (
+                            <div className="br-msg error br-msg-animate">
+                                <i className="fa-solid fa-circle-exclamation" style={{ marginRight: '6px' }}></i>
+                                {error}
+                                <button className="br-msg-dismiss" onClick={() => setError('')}>
+                                    <i className="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                        )}
+                        {successMsg && (
+                            <div className="br-msg success br-msg-animate">
+                                <i className="fa-solid fa-circle-check" style={{ marginRight: '6px' }}></i>
+                                {successMsg}
+                                <button className="br-msg-dismiss" onClick={() => setSuccessMsg('')}>
+                                    <i className="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                        )}
 
                         {/* ══════════════════════════════════════ */}
                         {/*  ACTION BUTTONS                        */}
@@ -551,7 +576,7 @@ const BookingRequest = () => {
                                         className="br-btn accept"
                                         disabled={updating || !canOwnerAccept}
                                         title={!canOwnerAccept ? 'Booking window has passed' : 'Accept this booking request'}
-                                        onClick={() => handleStatusUpdate('Accepted')}
+                                        onClick={handleAccept}
                                     >
                                         <i className="fa-solid fa-check"></i> Approve Request
                                     </button>

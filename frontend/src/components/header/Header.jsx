@@ -132,7 +132,7 @@ const Header = () => {
             className="logoWeb"
             alt="KrushiMitra"
           />
-          <span className="km-brand-text">Krushi<br />Mitra</span>
+          <span className="km-brand-text"><span style={{color: '#219653'}}>Krushi</span><span style={{color: '#1a472a'}}>Mitra</span></span>
         </div>
         <nav className="km-header-nav">
           <ul>
@@ -148,18 +148,18 @@ const Header = () => {
           </ul>
         </nav>
         {!isLoggedIn ? (
-          <div className="flex items-center">
+          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => navigate("/login")}
-              className="hover:bg-[#219653] bg-white border-2 transition border-[#219653] text-[#219653] hover:text-white font-bold py-1 px-8 rounded mx-2"
+              className="hover:bg-[#219653] bg-white border-2 transition-all duration-200 border-[#219653] text-[#219653] hover:text-white font-semibold py-2 px-7 rounded-lg text-[15px]"
             >
               Login
             </button>
             <button
               type="button"
               onClick={() => navigate("/register")}
-              className="hover:bg-[#219653] bg-white border-2 transition border-[#219653] text-[#219653] hover:text-white font-bold py-1 px-8 rounded mx-4"
+              className="bg-[#219653] hover:bg-[#1a7a42] border-2 transition-all duration-200 border-[#219653] hover:border-[#1a7a42] text-white font-semibold py-2 px-7 rounded-lg text-[15px]"
             >
               Sign Up
             </button>
@@ -352,6 +352,7 @@ const Header = () => {
                       Cookies.remove("access-token");
                       Cookies.remove("refresh-token");
                       Cookies.remove("uuid");
+                      localStorage.removeItem("isLoggedIn");
                       dispatch(getLogoutAction());
                       navigate("/login");
                     }}

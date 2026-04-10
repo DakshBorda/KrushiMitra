@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./AddProduct.css";
 import { createEquipment, getBrands, getEquipsList } from "../../api/equipments";
 import { useSelector } from "react-redux";
@@ -20,6 +20,7 @@ const AddProduct = () => {
   const [brands, setBrands] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  const submitLockRef = useRef(false);  // Synchronous lock to prevent double-submit
 
   const [data, setData] = useState({
     manufacturer: "", title: "", description: "", equipment_type: "",
@@ -104,11 +105,26 @@ const AddProduct = () => {
   const prevStep = () => setStep((s) => Math.max(s - 1, 0));
 
   const handleSubmit = async () => {
+    // Synchronous lock — prevents double-submit even if React batches state
+    if (submitLockRef.current) return;
     if (!validateStep(3)) { setStep(3); return; }
+    submitLockRef.current = true;
     setSubmitting(true);
     try {
       const res = await createEquipment(data, images);
       if (res?.data?.success) {
+        // Reset form state so back-button can't re-submit
+        setData({
+          manufacturer: "", title: "", description: "", equipment_type: "",
+          available_start_time: "", available_end_time: "",
+          equipment_location: "", daily_rental: "", hourly_rental: "",
+          manufacturing_year: "", model: "", condition: "New",
+          horsepower: "", width: "", height: "", weight: "",
+          show_phone_number: false,
+        });
+        setImages({});
+        setImagePreviews({});
+        setStep(0);
         navigate("/my-equipment");
       }
     } catch (err) {
@@ -128,6 +144,7 @@ const AddProduct = () => {
       }
     } finally {
       setSubmitting(false);
+      submitLockRef.current = false;
     }
   };
 

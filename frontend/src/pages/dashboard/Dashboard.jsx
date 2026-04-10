@@ -60,7 +60,11 @@ const Dashboard = () => {
                 ]);
                 if (eqRes.status === 'fulfilled') {
                     const d = eqRes.value?.data;
-                    setEquipments(d?.results || d || []);
+                    let items = [];
+                    if (Array.isArray(d)) items = d;
+                    else if (d?.results && Array.isArray(d.results)) items = d.results;
+                    else if (d?.data && Array.isArray(d.data)) items = d.data;
+                    setEquipments(items);
                 }
                 if (typeRes.status === 'fulfilled') {
                     setEquipList(typeRes.value?.data || []);

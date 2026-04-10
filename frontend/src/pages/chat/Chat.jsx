@@ -276,11 +276,12 @@ const Chat = () => {
       {/* Sidebar — Conversation List */}
       <div className="chat-sidebar">
         <div className="chat-sidebar-header">
-          <h2>💬 Messages</h2>
+          <h2><i className="fa-solid fa-comments" style={{ marginRight: '8px' }}></i>Messages</h2>
         </div>
         <div className="chat-sidebar-list">
           {conversations.length === 0 ? (
             <div className="chat-empty-sidebar">
+              <i className="fa-regular fa-comment-dots" style={{ fontSize: '36px', color: '#d1d5db', marginBottom: '12px' }}></i>
               <p>No conversations yet</p>
               <span>Visit an equipment page and click "Chat with Owner" to start</span>
             </div>
@@ -314,7 +315,7 @@ const Chat = () => {
                     )}
                   </div>
                   {conv.equipment_title && (
-                    <span className="chat-sidebar-equipment">🚜 {conv.equipment_title}</span>
+                    <span className="chat-sidebar-equipment"><i className="fa-solid fa-tractor" style={{ fontSize: '10px', marginRight: '3px' }}></i> {conv.equipment_title}</span>
                   )}
                 </div>
               </div>
@@ -327,14 +328,16 @@ const Chat = () => {
       <div className="chat-main">
         {chatError && (
           <div className="chat-error-banner">
-            <span>⚠️ {chatError}</span>
-            <button onClick={() => setChatError("")}>✕</button>
+            <span><i className="fa-solid fa-circle-exclamation" style={{ marginRight: '6px' }}></i>{chatError}</span>
+            <button onClick={() => setChatError("")}><i className="fa-solid fa-xmark"></i></button>
           </div>
         )}
 
         {!activeConversation ? (
           <div className="chat-no-selection">
-            <div className="chat-no-selection-icon">💬</div>
+            <div className="chat-no-selection-icon">
+              <i className="fa-regular fa-comment-dots"></i>
+            </div>
             <h3>Select a conversation</h3>
             <p>Choose from your existing conversations or start a new one from an equipment page</p>
           </div>
@@ -347,7 +350,7 @@ const Chat = () => {
                   className="chat-back-btn"
                   onClick={() => setShowSidebar(true)}
                 >
-                  ←
+                  <i className="fa-solid fa-arrow-left"></i>
                 </button>
                 <div className="chat-avatar chat-avatar-sm">
                   {getInitials(
@@ -362,7 +365,8 @@ const Chat = () => {
                   </h3>
                   {activeConversation.equipment_title && (
                     <span className="chat-header-equipment">
-                      🚜 {activeConversation.equipment_title}
+                      <i className="fa-solid fa-tractor" style={{ fontSize: '11px', marginRight: '4px' }}></i>
+                      {activeConversation.equipment_title}
                       {activeConversation.booking_id && ` • Booking #${activeConversation.booking_id}`}
                     </span>
                   )}
@@ -380,7 +384,7 @@ const Chat = () => {
                     disabled={loadingMore}
                     className="chat-load-more-btn"
                   >
-                    {loadingMore ? "Loading..." : "↑ Load older messages"}
+                    {loadingMore ? "Loading..." : (<><i className="fa-solid fa-arrow-up" style={{ marginRight: '4px' }}></i>Load older messages</>)}
                   </button>
                 </div>
               )}
@@ -392,7 +396,8 @@ const Chat = () => {
                 </div>
               ) : messages.length === 0 ? (
                 <div className="chat-no-messages">
-                  <p>No messages yet. Say hello! 👋</p>
+                  <i className="fa-regular fa-hand" style={{ fontSize: '32px', color: '#d1d5db', marginBottom: '8px', display: 'block' }}></i>
+                  <p>No messages yet. Say hello!</p>
                 </div>
               ) : (
                 messages.map((msg, idx) => {
@@ -425,7 +430,10 @@ const Chat = () => {
                             })}
                             {isMine && (
                               <span className="chat-read-status">
-                                {msg.is_read ? " ✓✓" : " ✓"}
+                                {msg.is_read
+                                  ? <><i className="fa-solid fa-check-double" style={{ marginLeft: '4px' }}></i></>
+                                  : <><i className="fa-solid fa-check" style={{ marginLeft: '4px' }}></i></>
+                                }
                               </span>
                             )}
                           </span>
@@ -462,7 +470,10 @@ const Chat = () => {
                 className="chat-send-btn"
                 disabled={!newMessage.trim() || sending || isOverLimit}
               >
-                {sending ? "..." : "Send"}
+                {sending
+                  ? <i className="fa-solid fa-spinner fa-spin"></i>
+                  : <i className="fa-solid fa-paper-plane"></i>
+                }
               </button>
             </form>
           </>

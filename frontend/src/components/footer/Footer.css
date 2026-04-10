@@ -28,6 +28,38 @@
     max-width: 280px;
 }
 
+.km-footer-contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.km-footer-contact-info span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #9ca3af;
+}
+
+.km-footer-contact-info span i {
+    color: #68AC5D;
+    font-size: 12px;
+    width: 14px;
+    text-align: center;
+}
+
+.km-footer-contact-info a {
+    color: #9ca3af;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.km-footer-contact-info a:hover {
+    color: #68AC5D;
+}
+
 .km-footer-col h3 {
     font-size: 14px;
     font-weight: 700;

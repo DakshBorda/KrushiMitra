@@ -36,7 +36,17 @@ const MyEquipment = () => {
     try {
       setLoading(true);
       const res = await getMyEquipments();
-      setEquipments(res?.data?.results || res?.data || []);
+      // Handle all possible response shapes from backend
+      const d = res?.data;
+      let items = [];
+      if (Array.isArray(d)) {
+        items = d;
+      } else if (d?.results && Array.isArray(d.results)) {
+        items = d.results;
+      } else if (d?.data && Array.isArray(d.data)) {
+        items = d.data;
+      }
+      setEquipments(items);
     } catch (err) {
       console.log("Error fetching my equipment:", err);
     } finally {

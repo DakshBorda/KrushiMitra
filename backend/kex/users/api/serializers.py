@@ -485,3 +485,194 @@ class LoginVerifyOtpSerializer(serializers.ModelSerializer):
             "user_id": user.user_id,
             "id": user.id,
         }
+
+
+# ═══════════════════════════════════════════════════════════
+#  PASSWORD RESET SERIALIZERS
+# ═══════════════════════════════════════════════════════════
+
+class ForgotPasswordSerializer(serializers.Serializer):
+    """Step 1: User provides email → we send a 6-digit OTP to that email."""
+    email = serializers.EmailField(required=True)
+
+    def validate_email(self, value):
+        email = value.lower().strip()
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            # Security: don't reveal if email exists or not
+            # We still return success to prevent email enumeration
+            return email
+
+        if not user.is_active:
+            raise serializers.ValidationError("This account has been deactivated.")
+        return email
+
+    def save(self):
+        from kex.users.models import PasswordResetOTP
+        from django.core.mail import send_mail
+        from django.conf import settings
+        import logging
+
+        logger = logging.getLogger(__name__)
+        email = self.validated_data["email"].lower().strip()
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            # Don't reveal that user doesn't exist — silently succeed
+            logger.info(f"Password reset requested for non-existent email: {email}")
+            return None
+
+        # Rate limit: max 3 OTPs per hour
+        from django.utils import timezone
+        from datetime import timedelta
+        recent_count = PasswordResetOTP.objects.filter(
+            user=user,
+            created_at__gte=timezone.now() - timedelta(hours=1),
+        ).count()
+        if recent_count >= 3:
+            raise serializers.ValidationError(
+                "Too many reset requests. Please wait before trying again."
+            )
+
+        # Create OTP
+        otp_obj = PasswordResetOTP.create_for_user(user)
+
+        # Send email
+        subject = "KrushiMitra — Password Reset Code"
+        message = (
+            f"Hello {user.first_name or 'User'},\n\n"
+            f"Your password reset code is: {otp_obj.otp}\n\n"
+            f"This code expires in 10 minutes.\n"
+            f"If you did not request this, please ignore this email.\n\n"
+            f"— KrushiMitra Team"
+        )
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+            )
+            logger.info(f"Password reset OTP sent to {user.email}")
+        except Exception as e:
+            logger.error(f"Failed to send password reset email to {user.email}: {e}")
+            # In dev, OTP is logged to console anyway
+            # Don't fail the request — user can retry
+
+        return otp_obj
+
+
+class ForgotPasswordVerifySerializer(serializers.Serializer):
+    """Step 2: User provides email + OTP → we verify and return a reset token."""
+    email = serializers.EmailField(required=True)
+    otp = serializers.CharField(required=True, max_length=6)
+
+    def validate(self, attrs):
+        from kex.users.models import PasswordResetOTP
+        import uuid as uuid_lib
+
+        email = attrs["email"].lower().strip()
+        otp_code = attrs["otp"].strip()
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("Invalid email or OTP.")
+
+        # Find the latest valid OTP for this user
+        otp_obj = PasswordResetOTP.objects.filter(
+            user=user, is_used=False
+        ).order_by("-created_at").first()
+
+        if not otp_obj:
+            raise serializers.ValidationError("No active reset code found. Please request a new one.")
+
+        if otp_obj.is_expired:
+            otp_obj.is_used = True
+            otp_obj.save(update_fields=["is_used"])
+            raise serializers.ValidationError("Reset code has expired. Please request a new one.")
+
+        # Increment attempts
+        otp_obj.attempts += 1
+        otp_obj.save(update_fields=["attempts"])
+
+        if otp_obj.attempts > 5:
+            otp_obj.is_used = True
+            otp_obj.save(update_fields=["is_used"])
+            raise serializers.ValidationError("Too many incorrect attempts. Please request a new code.")
+
+        if otp_obj.otp != otp_code:
+            remaining = 5 - otp_obj.attempts
+            raise serializers.ValidationError(
+                f"Incorrect code. {remaining} attempt(s) remaining."
+            )
+
+        # Mark OTP as used
+        otp_obj.is_used = True
+        otp_obj.save(update_fields=["is_used"])
+
+        # Generate a one-time reset token (stored in session/frontend)
+        reset_token = str(uuid_lib.uuid4())
+
+        # Store the reset token temporarily on the user
+        # We use the cache for this (or a simple approach: store on the OTP record)
+        from django.core.cache import cache
+        cache.set(f"pwd_reset_{reset_token}", user.pk, timeout=600)  # 10 min
+
+        attrs["reset_token"] = reset_token
+        attrs["user"] = user
+        return attrs
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    """Step 3: User provides reset_token + new password → we update the password."""
+    email = serializers.EmailField(required=True)
+    reset_token = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True, min_length=8)
+    confirm_password = serializers.CharField(required=True, min_length=8)
+
+    def validate(self, attrs):
+        from django.core.cache import cache
+        from django.contrib.auth.password_validation import validate_password as django_validate_password
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        email = attrs["email"].lower().strip()
+        reset_token = attrs["reset_token"]
+        new_password = attrs["new_password"]
+        confirm_password = attrs["confirm_password"]
+
+        if new_password != confirm_password:
+            raise serializers.ValidationError("Passwords do not match.")
+
+        # Validate password strength
+        try:
+            django_validate_password(new_password)
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(" ".join(e.messages))
+
+        # Verify reset token
+        user_pk = cache.get(f"pwd_reset_{reset_token}")
+        if not user_pk:
+            raise serializers.ValidationError(
+                "Reset session has expired. Please start over."
+            )
+
+        try:
+            user = User.objects.get(pk=user_pk, email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("Invalid reset request.")
+
+        # Clear the token so it can't be reused
+        cache.delete(f"pwd_reset_{reset_token}")
+
+        attrs["user"] = user
+        return attrs
+
+    def save(self):
+        user = self.validated_data["user"]
+        user.set_password(self.validated_data["new_password"])
+        user.save(update_fields=["password"])
+        return user

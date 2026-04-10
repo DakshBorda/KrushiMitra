@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework.filters import (
     SearchFilter,
     OrderingFilter,
@@ -9,7 +11,8 @@ from rest_framework.generics import (
     RetrieveAPIView,
 )
 from rest_framework.views import APIView
-from django.db.models import Q
+from rest_framework.throttling import UserRateThrottle
+from django.db.models import Q, Count
 from datetime import date
 
 from rest_framework.permissions import (
@@ -32,12 +35,21 @@ from rest_framework.response import Response
 from kex.core.utils import response_payload
 from rest_framework.exceptions import NotFound
 from kex.equipment.api.pagination import LimitOffsetPagination
-from kex.equipment.api.permissions import IsOwnerOrReadOnly
+
+logger = logging.getLogger(__name__)
+
+
+# ── Rate limiter for booking creation (prevents spam) ──
+class BookingCreateThrottle(UserRateThrottle):
+    rate = '10/hour'
 
 
 class BookingListAPIView(ListAPIView):
     """List bookings where the current user is the CUSTOMER."""
-    queryset = Booking.objects.all()
+    queryset = Booking.objects.select_related(
+        'customer', 'equipment', 'equipment__owner',
+        'equipment__manufacturer', 'equipment__equipment_type',
+    ).all()
     serializer_class = BookingListSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [SearchFilter, OrderingFilter]
@@ -54,28 +66,28 @@ class BookingListAPIView(ListAPIView):
     ]
 
     def get_queryset(self, *args, **kwargs):
-        queryset_list = self.queryset.filter(customer=self.request.user)
-        return queryset_list
+        return self.queryset.filter(customer=self.request.user)
 
 
 class BookingCreateAPIView(CreateAPIView):
     queryset = Booking.objects.all()
     serializer_class = BookingCreateSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [BookingCreateThrottle]
 
     def create(self, request, *args, **kwargs):
         serializer = self.serializer_class(
             data=request.data, context={"user": request.user}
         )
         serializer.is_valid(raise_exception=True)
-        booking = serializer.create(serializer.validated_data)
+        booking = serializer.save()
         return Response(
             response_payload(
                 success=True,
-                data=BookingCreateSerializer(booking).data,
+                data=BookingCreateSerializer(booking, context={"user": request.user}).data,
                 msg="Booking has been created",
             ),
-            status=status.HTTP_200_OK,
+            status=status.HTTP_201_CREATED,
         )
 
 
@@ -85,7 +97,11 @@ class BookingUpdateAPIView(UpdateAPIView):
     Accepts: status, rejection_reason, rejection_note,
              owner_cancellation_reason, owner_cancellation_note
     """
-    queryset = Booking.objects.all()
+    queryset = Booking.objects.select_related(
+        'customer', 'equipment', 'equipment__owner',
+        'equipment__manufacturer', 'equipment__equipment_type',
+        'cancelled_by',
+    ).all()
     serializer_class = BookingUpdateSerializer
     lookup_field = "pk"
     permission_classes = [IsAuthenticated]
@@ -155,9 +171,10 @@ class BookingRetrieveAPIView(RetrieveAPIView):
             serializer = self.get_serializer(instance)
             return Response(serializer.data)
         except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"BookingRetrieveAPIView serialization error for pk={kwargs.get('pk')}: {e}")
+            logger.error(
+                "BookingRetrieveAPIView serialization error for pk=%s: %s",
+                kwargs.get('pk'), e,
+            )
             return Response(
                 {"detail": "Error loading booking details. Please try again."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -166,7 +183,10 @@ class BookingRetrieveAPIView(RetrieveAPIView):
 
 class BookingRequestListAPIView(ListAPIView):
     """List bookings where the current user is the EQUIPMENT OWNER."""
-    queryset = Booking.objects.all()
+    queryset = Booking.objects.select_related(
+        'customer', 'equipment', 'equipment__owner',
+        'equipment__manufacturer', 'equipment__equipment_type',
+    ).all()
     serializer_class = BookingListSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [SearchFilter, OrderingFilter]
@@ -183,8 +203,7 @@ class BookingRequestListAPIView(ListAPIView):
     ]
 
     def get_queryset(self, *args, **kwargs):
-        queryset_list = self.queryset.filter(equipment__owner=self.request.user)
-        return queryset_list
+        return self.queryset.filter(equipment__owner=self.request.user)
 
 
 class OwnerStatsView(APIView):
@@ -195,7 +214,6 @@ class OwnerStatsView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, owner_id):
-        from django.db.models import Avg, F, Count
         from kex.users.models import User
 
         try:
@@ -225,8 +243,6 @@ class OwnerStatsView(APIView):
         )
         avg_hours = None
         if responded.exists():
-            # Calculate using the earliest response timestamp
-            from django.db.models.functions import Coalesce, Least
             resp_times = []
             for b in responded.values("created_at", "accepted_at", "rejected_at"):
                 response_time = b.get("accepted_at") or b.get("rejected_at")
@@ -265,7 +281,6 @@ class AdminDashboardView(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        from django.db.models import Sum, Count
         from django.utils import timezone
         from datetime import timedelta
 
@@ -277,8 +292,10 @@ class AdminDashboardView(APIView):
             all_bookings.values_list("status").annotate(c=Count("id")).values_list("status", "c")
         )
 
-        # Revenue (completed bookings)
-        completed_bookings = all_bookings.filter(status="Completed")
+        # Revenue (completed bookings) — optimized with select_related
+        completed_bookings = all_bookings.filter(
+            status="Completed"
+        ).select_related("equipment")
         total_revenue = 0
         for b in completed_bookings:
             days = (b.end_date - b.start_date).days + 1
@@ -292,12 +309,11 @@ class AdminDashboardView(APIView):
         bookings_this_month = all_bookings.filter(created_at__gte=month_ago).count()
 
         # Top 5 most-booked equipment
-        from django.db.models import Count as DjCount
         top_equipment = list(
             all_bookings.values(
                 "equipment__title", "equipment__id"
             ).annotate(
-                booking_count=DjCount("id")
+                booking_count=Count("id")
             ).order_by("-booking_count")[:5]
         )
 
@@ -308,7 +324,7 @@ class AdminDashboardView(APIView):
                 "equipment__owner__last_name",
                 "equipment__owner__id",
             ).annotate(
-                booking_count=DjCount("id")
+                booking_count=Count("id")
             ).order_by("-booking_count")[:5]
         )
 
@@ -351,4 +367,3 @@ class BlockedDatesView(APIView):
         ).values("start_date", "end_date", "status", "booking_id")
 
         return Response(list(blocked_bookings))
-

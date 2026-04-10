@@ -44,9 +44,13 @@ instance.interceptors.response.use(
   async (error) => {
     const status = error?.response?.status;
     const refreshToken = Cookies.get("refresh-token");
+    const method = (error?.config?.method || "").toUpperCase();
 
-    // 🚫 Do NOT refresh if refresh token does not exist
-    if (status === 401 && refreshToken) {
+    // Only auto-retry safe/idempotent methods (GET, HEAD, OPTIONS)
+    // POST/PATCH/DELETE must NOT be replayed — it causes duplicates
+    const safeToRetry = ["GET", "HEAD", "OPTIONS"].includes(method);
+
+    if (status === 401 && refreshToken && safeToRetry) {
       try {
         const token = await renewAccessToken();
         Cookies.set("access-token", token.access);

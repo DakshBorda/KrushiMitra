@@ -11,24 +11,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useSelector } from 'react-redux';
 import Cookies from "js-cookie";
-
-// ── Error extraction utility — handles all DRF ValidationError shapes ──
-const extractErrorMsg = (err) => {
-    const d = err?.response?.data;
-    if (!d) return 'Something went wrong. Please try again.';
-    if (typeof d === 'string') return d;
-    if (Array.isArray(d)) return d[0];
-    if (d.message) return Array.isArray(d.message) ? d.message[0] : d.message;
-    if (d.non_field_errors) return Array.isArray(d.non_field_errors) ? d.non_field_errors[0] : d.non_field_errors;
-    if (d.detail) return d.detail;
-    // Flatten first key's first error
-    const firstKey = Object.keys(d).find(k => k !== 'status');
-    if (firstKey && d[firstKey]) {
-        const val = d[firstKey];
-        return Array.isArray(val) ? val[0] : val;
-    }
-    return 'Booking failed. Please try again.';
-};
+import { extractErrorMsg } from '../../utils/errorUtils';
 
 const Product = () => {
     const [calendarOpen, setCalendarOpen] = useState(false);
@@ -41,6 +24,7 @@ const Product = () => {
     const [bookingError, setBookingError] = useState('');
     const [ownerStats, setOwnerStats] = useState(null);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [bookingSuccess, setBookingSuccess] = useState(false);
     const [bookingInProgress, setBookingInProgress] = useState(false);
     const params = useParams();
     const navigate = useNavigate();
@@ -54,7 +38,7 @@ const Product = () => {
         setLoading(true);
         getEquip(params.eqId)
             .then(res => setEquipment(res?.data))
-            .catch(err => console.log('Error loading equipment:', err))
+            .catch(err => console.error('Error loading equipment:', err))
             .finally(() => setLoading(false));
     }, [params.eqId]);
 
@@ -84,7 +68,7 @@ const Product = () => {
         try {
             const res = await getBlockedDates(equipment.id);
             setBlockedRanges(res?.data || []);
-        } catch (err) { console.log("Error fetching blocked dates:", err); }
+        } catch (err) { console.error("Error fetching blocked dates:", err); }
     };
 
     const disabledDates = useMemo(() => {
@@ -134,7 +118,9 @@ const Product = () => {
         try {
             await createBooking(equipment?.id, formattedStartDate, formattedEndDate);
             setShowConfirmModal(false);
-            navigate('/booking-history');
+            setBookingSuccess(true);
+            // Brief success toast before redirect
+            setTimeout(() => navigate('/booking-history'), 1500);
         } catch (err) {
             setBookingError(extractErrorMsg(err));
             setShowConfirmModal(false);
@@ -187,6 +173,20 @@ const Product = () => {
             {!isOwner && !equipment.is_available && (
                 <div className="pd-banner unavailable">
                     This equipment is currently unavailable for booking
+                </div>
+            )}
+
+            {/* Booking Success Toast */}
+            {bookingSuccess && (
+                <div className="pd-banner success" style={{
+                    background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
+                    border: '1px solid #86efac',
+                    color: '#166534',
+                    textAlign: 'center',
+                    animation: 'pd-toast-in 0.3s ease',
+                }}>
+                    <i className="fa-solid fa-circle-check" style={{ marginRight: '8px' }}></i>
+                    Booking request submitted! Redirecting to your booking history...
                 </div>
             )}
 
@@ -416,6 +416,27 @@ const Product = () => {
                                             months={1}
                                             direction="vertical"
                                         />
+                                        {disabledDates.length > 0 && (
+                                            <div style={{
+                                                padding: '8px 16px 12px',
+                                                fontSize: '11px',
+                                                color: '#9ca3af',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                            }}>
+                                                <span style={{
+                                                    display: 'inline-block',
+                                                    width: '10px',
+                                                    height: '10px',
+                                                    borderRadius: '2px',
+                                                    background: '#e5e7eb',
+                                                    border: '1px solid #d1d5db',
+                                                    flexShrink: 0,
+                                                }}></span>
+                                                Grayed-out dates are already booked
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -456,15 +477,17 @@ const Product = () => {
                                 {/* Book Now — DISABLED until dates selected */}
                                 {Cookies.get('access-token') ? (
                                     <button
-                                        className={`pd-btn-book ${canBook ? 'primary' : 'disabled'}`}
+                                        className={`pd-btn-book ${canBook && !bookingSuccess ? 'primary' : 'disabled'}`}
                                         onClick={handleBookingClick}
-                                        disabled={!canBook}
+                                        disabled={!canBook || bookingSuccess}
                                     >
-                                        {!equipment.is_available
-                                            ? 'Currently Unavailable'
-                                            : !datesSelected
-                                                ? 'Select Dates to Book'
-                                                : 'Book Now'}
+                                        {bookingSuccess
+                                            ? 'Booking Submitted!'
+                                            : !equipment.is_available
+                                                ? 'Currently Unavailable'
+                                                : !datesSelected
+                                                    ? 'Select Dates to Book'
+                                                    : 'Book Now'}
                                     </button>
                                 ) : (
                                     <button className="pd-btn-book login" onClick={() => navigate('/login')}>

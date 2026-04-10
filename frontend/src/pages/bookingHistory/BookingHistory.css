@@ -643,6 +643,96 @@
   cursor: not-allowed;
 }
 
+/* ── Skeleton Loader ── */
+.bh-skeleton-wrap {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #f3f4f6;
+  padding: 20px 24px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.bh-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid #f9fafb;
+}
+
+.bh-skeleton-row:last-child {
+  border-bottom: none;
+}
+
+.bh-skel {
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: bh-shimmer 1.5s ease-in-out infinite;
+  height: 16px;
+}
+
+.bh-skel-date { width: 90px; }
+.bh-skel-id { width: 70px; height: 24px; border-radius: 6px; }
+.bh-skel-name { width: 140px; flex: 1; }
+.bh-skel-period { width: 110px; }
+.bh-skel-cost { width: 70px; }
+.bh-skel-badge { width: 80px; height: 24px; border-radius: 20px; }
+.bh-skel-btn { width: 90px; height: 28px; border-radius: 8px; }
+
+@keyframes bh-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Message Animation & Dismiss ── */
+.bh-msg-animate {
+  animation: bh-msg-slide-in 0.3s ease;
+}
+
+@keyframes bh-msg-slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.bh-action-msg {
+  position: relative;
+}
+
+.bh-msg-dismiss {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: inherit;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  padding: 4px;
+}
+
+.bh-msg-dismiss:hover {
+  opacity: 1;
+}
+
+/* ── Search Clear Button ── */
+.bh-search-clear {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  font-size: 14px;
+  padding: 4px;
+  transition: color 0.2s;
+}
+
+.bh-search-clear:hover {
+  color: #374151;
+}
+
 /* ── Responsive ── */
 @media (max-width: 1024px) {
   .bh-table-wrap {
@@ -669,4 +759,9 @@
     padding: 12px 16px;
     font-size: 13px;
   }
+  .bh-skeleton-row {
+    gap: 10px;
+    padding: 12px 0;
+  }
+  .bh-skel-name { min-width: 80px; }
 }

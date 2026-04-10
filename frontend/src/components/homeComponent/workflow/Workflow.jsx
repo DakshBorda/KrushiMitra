@@ -7,7 +7,7 @@ const Workflow = () => {
   return (
     <div className=" mb-10 p-12 bg-[#219653] ">
       <h1 className="text-4xl font-bold uppercase mb-4 text-center">
-        How KRUSHIMITRA works?
+        How KrushiMitra Works?
       </h1>
       <p className="text-md font-medium uppercase mb-4 text-white text-center">
         Take a Look at our Platform Demo
@@ -27,9 +27,9 @@ const Workflow = () => {
               Check an available time slot.
             </li>
             <li className="text-2xl mr-4 my-3">
-              Chat with the owner and make a booking..
+              Chat with the owner and make a booking.
             </li>
-            <li className="text-2xl mr-4 my-4">Stay updated by SMS.</li>
+            <li className="text-2xl mr-4 my-4">Stay updated with notifications.</li>
           </ul>
         </div>
         <div className="h-1/2 w-1/2">

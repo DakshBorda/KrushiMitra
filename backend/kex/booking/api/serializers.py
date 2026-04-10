@@ -2,6 +2,7 @@ from rest_framework import serializers
 from datetime import datetime, date, time, timedelta
 from django.db.models import Q
 from django.utils import timezone
+from django.utils.html import strip_tags
 
 from kex.booking.models import (
     Booking,
@@ -12,7 +13,6 @@ from kex.booking.models import (
     TERMINAL_STATUSES,
 )
 from kex.equipment.api.serializers import EquipmentListSerializer
-from kex.equipment.models import Equipment
 from kex.users.api.serializers import UserSerializer
 from kex.notifications.models import create_notification
 
@@ -23,6 +23,14 @@ from kex.notifications.models import create_notification
 MAX_BOOKING_DURATION_DAYS = 30
 MAX_ACTIVE_PENDING_PER_CUSTOMER = 5
 MIN_ADVANCE_BOOKING_DAYS = 1  # Customer must book at least 1 day in advance
+MAX_FUTURE_BOOKING_DAYS = 365  # Cannot book more than 1 year in advance
+
+
+def _sanitize_text(value):
+    """Strip HTML tags and excessive whitespace from user-provided text."""
+    if not value:
+        return ""
+    return strip_tags(value).strip()
 
 
 # ────────────────────────────────────────────────────────────
@@ -130,6 +138,7 @@ class BookingCreateSerializer(serializers.ModelSerializer):
     - A8: No past-date booking
     - A9: Max 5 active pending bookings per customer
     - A10: Max 30-day booking duration
+    - A11: Max 365 days in the future
     """
 
     equipment_type = serializers.SerializerMethodField()
@@ -166,71 +175,74 @@ class BookingCreateSerializer(serializers.ModelSerializer):
             "response_deadline",
         ]
 
-    def create(self, validated_data):
-        start_date = validated_data.get("start_date")
-        end_date = validated_data.get("end_date")
-        equipment = validated_data.get("equipment")
+    def validate(self, attrs):
+        """All booking creation validation happens here for consistent DRF error responses."""
+        start_date = attrs.get("start_date")
+        end_date = attrs.get("end_date")
+        equipment = attrs.get("equipment")
         user = self.context["user"]
+
+        errors = {}
 
         # ── A1: Profile must be complete before booking ──
         if not user.is_profile_complete:
-            raise serializers.ValidationError(
+            errors["non_field_errors"] = [
                 "Please complete your profile (address, city, state, pincode) before booking."
-            )
+            ]
 
         # ── A4: start_date must be before or equal to end_date ──
-        if start_date > end_date:
-            raise serializers.ValidationError(
-                "Start date cannot be after end date."
-            )
+        if start_date and end_date and start_date > end_date:
+            errors["end_date"] = ["Start date cannot be after end date."]
 
         # ── A8: No past-date bookings ──
-        if start_date < date.today():
-            raise serializers.ValidationError(
-                "Start date cannot be in the past."
-            )
+        if start_date and start_date < date.today():
+            errors["start_date"] = ["Start date cannot be in the past."]
 
         # ── C1: Minimum advance booking (owner needs preparation time) ──
-        days_until_start = (start_date - date.today()).days
-        if days_until_start < MIN_ADVANCE_BOOKING_DAYS:
-            raise serializers.ValidationError(
-                f"Bookings must be made at least {MIN_ADVANCE_BOOKING_DAYS} day(s) in advance. "
-                "Equipment owners need time to prepare the equipment for rental."
-            )
+        if start_date:
+            days_until_start = (start_date - date.today()).days
+            if days_until_start < MIN_ADVANCE_BOOKING_DAYS:
+                errors["start_date"] = [
+                    f"Bookings must be made at least {MIN_ADVANCE_BOOKING_DAYS} day(s) in advance. "
+                    "Equipment owners need time to prepare the equipment for rental."
+                ]
+
+        # ── A11: Max future booking limit ──
+        if start_date:
+            days_in_future = (start_date - date.today()).days
+            if days_in_future > MAX_FUTURE_BOOKING_DAYS:
+                errors["start_date"] = [
+                    f"Bookings cannot be made more than {MAX_FUTURE_BOOKING_DAYS} days in advance."
+                ]
 
         # ── A10: Max booking duration ──
-        duration = (end_date - start_date).days
-        if duration > MAX_BOOKING_DURATION_DAYS:
-            raise serializers.ValidationError(
-                f"Booking duration cannot exceed {MAX_BOOKING_DURATION_DAYS} days."
-            )
-
-        # ── A3: Equipment must exist ──
-        if not Equipment.objects.filter(id=equipment.id).exists():
-            raise serializers.ValidationError("Equipment does not exist")
-
-        eq_obj = Equipment.objects.get(id=equipment.id)
+        if start_date and end_date:
+            duration = (end_date - start_date).days
+            if duration > MAX_BOOKING_DURATION_DAYS:
+                errors["end_date"] = [
+                    f"Booking duration cannot exceed {MAX_BOOKING_DURATION_DAYS} days."
+                ]
 
         # ── A2: Cannot book your own equipment ──
-        if eq_obj.owner == user:
-            raise serializers.ValidationError(
-                "You cannot book your own equipment."
-            )
+        if equipment and equipment.owner == user:
+            errors["equipment"] = ["You cannot book your own equipment."]
 
         # ── A3: Equipment must be available ──
-        if not eq_obj.is_available:
-            raise serializers.ValidationError(
-                "Equipment is not available for booking"
-            )
+        if equipment and not equipment.is_available:
+            errors["equipment"] = ["Equipment is not available for booking."]
 
         # ── A5: Dates fall within equipment availability window ──
-        if not (
-            eq_obj.available_start_time <= start_date <= eq_obj.available_end_time
-            and eq_obj.available_start_time <= end_date <= eq_obj.available_end_time
-        ):
-            raise serializers.ValidationError(
-                "Selected dates are outside the equipment's availability window."
-            )
+        if equipment and start_date and end_date:
+            if not (
+                equipment.available_start_time <= start_date <= equipment.available_end_time
+                and equipment.available_start_time <= end_date <= equipment.available_end_time
+            ):
+                errors["non_field_errors"] = [
+                    "Selected dates are outside the equipment's availability window."
+                ]
+
+        if errors:
+            raise serializers.ValidationError(errors)
 
         # ── A9: Max active pending bookings per customer ──
         active_pending_count = Booking.objects.filter(
@@ -238,12 +250,14 @@ class BookingCreateSerializer(serializers.ModelSerializer):
             status="Pending",
         ).count()
         if active_pending_count >= MAX_ACTIVE_PENDING_PER_CUSTOMER:
-            raise serializers.ValidationError(
-                f"You can have at most {MAX_ACTIVE_PENDING_PER_CUSTOMER} pending booking requests at a time. "
-                "Please wait for existing requests to be accepted/rejected, or cancel some."
-            )
+            raise serializers.ValidationError({
+                "non_field_errors": [
+                    f"You can have at most {MAX_ACTIVE_PENDING_PER_CUSTOMER} pending booking requests at a time. "
+                    "Please wait for existing requests to be accepted/rejected, or cancel some."
+                ]
+            })
 
-        # ── A6: No duplicate active booking by same customer for same equipment (any dates) ──
+        # ── A6: No duplicate active booking by same customer for same equipment ──
         active_for_equipment = Booking.objects.filter(
             customer=user,
             equipment=equipment,
@@ -251,17 +265,17 @@ class BookingCreateSerializer(serializers.ModelSerializer):
             status__in=TERMINAL_STATUSES
         )
         if active_for_equipment.exists():
-            raise serializers.ValidationError(
-                "You already have an active booking request for this equipment. "
-                "Please wait for it to be resolved or cancel it first."
-            )
+            raise serializers.ValidationError({
+                "non_field_errors": [
+                    "You already have an active booking request for this equipment. "
+                    "Please wait for it to be resolved or cancel it first."
+                ]
+            })
 
         # ── A7: Only Accepted/Inprogress bookings block the calendar ──
-        # Pending bookings do NOT block — multiple customers can request overlapping dates.
-        # The owner picks who to accept, and the rest get auto-rejected.
         overlapping_confirmed = Booking.objects.filter(
             equipment__id=equipment.id,
-            status__in=CALENDAR_BLOCKING_STATUSES,  # Only Accepted, Inprogress
+            status__in=CALENDAR_BLOCKING_STATUSES,
         ).filter(
             Q(start_date__lte=start_date, end_date__gte=start_date)
             | Q(start_date__lte=end_date, end_date__gte=end_date)
@@ -269,9 +283,19 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         )
 
         if overlapping_confirmed.exists():
-            raise serializers.ValidationError(
-                "This equipment is already booked for the selected dates. Please choose another slot."
-            )
+            raise serializers.ValidationError({
+                "non_field_errors": [
+                    "This equipment is already booked for the selected dates. Please choose another slot."
+                ]
+            })
+
+        return attrs
+
+    def create(self, validated_data):
+        user = self.context["user"]
+        equipment = validated_data.get("equipment")
+        start_date = validated_data.get("start_date")
+        end_date = validated_data.get("end_date")
 
         booking = Booking.objects.create(
             **validated_data, customer=user
@@ -279,12 +303,12 @@ class BookingCreateSerializer(serializers.ModelSerializer):
 
         # ── Notify the equipment owner about the new booking request ──
         create_notification(
-            recipient=eq_obj.owner,
+            recipient=equipment.owner,
             notification_type="new_booking_request",
             title="New Booking Request",
             message=(
                 f"{user.first_name} {user.last_name} has requested to book "
-                f"your {eq_obj.title} from {start_date} to {end_date}."
+                f"your {equipment.title} from {start_date} to {end_date}."
             ),
             booking=booking,
         )
@@ -349,6 +373,12 @@ class BookingUpdateSerializer(serializers.Serializer):
     def validate(self, attrs):
         """Cross-field validation for rejection/cancellation reasons."""
         new_status = attrs.get("status")
+
+        # Sanitize text fields to prevent stored XSS
+        if attrs.get("rejection_note"):
+            attrs["rejection_note"] = _sanitize_text(attrs["rejection_note"])
+        if attrs.get("owner_cancellation_note"):
+            attrs["owner_cancellation_note"] = _sanitize_text(attrs["owner_cancellation_note"])
 
         # If rejecting, rejection_reason is REQUIRED
         if new_status == "Rejected":

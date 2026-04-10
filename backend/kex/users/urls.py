@@ -5,6 +5,7 @@ from kex.users.api.viewset import (
     LoginViewset,
     SignUpViewset,
     LoginOtpViewset,
+    ForgotPasswordViewset,
 )
 
 app_name = "users"
@@ -18,7 +19,6 @@ urlpatterns = [
         name="signup_verify_otp",
     ),
 
-    # ✅ FIXED HERE
     path(
         "login/email",
         LoginViewset.as_view({"post": "email"}),
@@ -35,6 +35,23 @@ urlpatterns = [
         "login/verify-otp",
         LoginVerifyOtpViewset.as_view({"post": "verify_otp_login"}),
         name="verify_otp_login",
+    ),
+
+    # ── Password Reset (3-step) ──
+    path(
+        "forgot-password/request-otp",
+        ForgotPasswordViewset.as_view({"post": "request_otp"}),
+        name="forgot_password_request",
+    ),
+    path(
+        "forgot-password/verify-otp",
+        ForgotPasswordViewset.as_view({"post": "verify_otp"}),
+        name="forgot_password_verify",
+    ),
+    path(
+        "forgot-password/reset",
+        ForgotPasswordViewset.as_view({"post": "reset_password"}),
+        name="forgot_password_reset",
     ),
 
     path(

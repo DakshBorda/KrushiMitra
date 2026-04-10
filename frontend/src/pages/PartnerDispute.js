@@ -1,13 +1,14 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Cookies from "js-cookie";
 
-//Components
-import InputField from "../components/input/InputField";
-
-//Functions
 import { postDisputeData } from "../api/authAPI";
 
 const PartnerDispute = () => {
-  const [partner_id, setId] = useState("");
+  const navigate = useNavigate();
+  const isLoggedIn = !!Cookies.get("refresh-token");
+
+  const [partner_id, setPartnerId] = useState("");
   const [email, setEmail] = useState("");
   const [name, setFullName] = useState("");
   const [phone_number, setPhoneNumber] = useState("");
@@ -15,107 +16,317 @@ const PartnerDispute = () => {
   const [equipment_id, setEquipmentId] = useState("");
   const [topic, setTopic] = useState("");
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   async function submitDispute(e) {
     e.preventDefault();
-    const data = await postDisputeData({
-      partner_id,
-      email,
-      name,
-      phone_number,
-      description,
-      topic,
-      equipment_id,
-    });
-    if (data.success) {
-      setMessage(data.message);
+    if (loading) return;
+    setError("");
+    setMessage("");
+
+    if (!name.trim() || !phone_number.trim() || !topic || !description.trim()) {
+      setError("Please fill in all required fields.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data = await postDisputeData({
+        partner_id,
+        email,
+        name,
+        phone_number,
+        description,
+        topic,
+        equipment_id,
+      });
+      if (data.success) {
+        setSuccess(true);
+        setMessage("Your dispute has been submitted successfully. Our team will review it and get back to you within 48 hours.");
+      }
+    } catch (err) {
+      setError("Failed to submit dispute. Please try again or contact us directly at krushimitra@gmail.com");
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <div>
-      <div className="text-center">
-        <div className="p-9" style={{ backgroundColor: "#68AC5D" }}>
-          <h1 className="text-4xl font-bold text-white">
-            Partner Dispute : Resolution Center
-          </h1>
-          <p className="text-2xl font-semibold text-white my-4">
-            Submit a complaint, and we’ll get back to you as soon as we can.
-          </p>
+    <div style={{ minHeight: "80vh", background: "#fafbfa" }}>
+      {/* Hero */}
+      <div style={{
+        background: "linear-gradient(135deg, #7f1d1d 0%, #dc2626 50%, #f87171 100%)",
+        padding: "52px 20px 70px 20px",
+        textAlign: "center",
+        position: "relative", overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute", top: "-40px", right: "-40px",
+          width: "200px", height: "200px", borderRadius: "50%",
+          background: "rgba(255,255,255,0.06)",
+        }}></div>
+        <h1 style={{
+          fontSize: "32px", fontWeight: 800, color: "#fff",
+          margin: "0 0 8px 0",
+        }}>
+          <i className="fa-solid fa-scale-balanced" style={{ marginRight: "12px" }}></i>
+          Raise a Dispute
+        </h1>
+        <p style={{
+          fontSize: "15px", color: "rgba(255,255,255,0.85)",
+          margin: 0, maxWidth: "500px", marginLeft: "auto", marginRight: "auto",
+        }}>
+          Had an issue with an equipment owner or a transaction? Submit a formal complaint and our team will investigate.
+        </p>
+      </div>
+
+      {/* Main Content */}
+      <div style={{
+        maxWidth: "700px", margin: "-36px auto 0 auto",
+        padding: "0 20px 60px 20px", position: "relative", zIndex: 2,
+      }}>
+        {/* Info Banner */}
+        <div style={{
+          background: "#fff", borderRadius: "14px",
+          padding: "20px 24px", marginBottom: "20px",
+          boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+          border: "1px solid #e5e7eb",
+          display: "flex", gap: "14px", alignItems: "flex-start",
+        }}>
+          <i className="fa-solid fa-circle-info" style={{
+            color: "#3b82f6", fontSize: "20px", marginTop: "2px", flexShrink: 0,
+          }}></i>
+          <div>
+            <p style={{ fontSize: "14px", color: "#374151", fontWeight: 600, margin: "0 0 4px 0" }}>
+              When should I raise a dispute?
+            </p>
+            <ul style={{
+              fontSize: "13px", color: "#6b7280", margin: 0,
+              paddingLeft: "16px", lineHeight: 1.7,
+            }}>
+              <li>Financial disagreements (overcharges, refund issues)</li>
+              <li>Equipment not as described or damaged</li>
+              <li>Breach of booking agreement</li>
+              <li>Unresolved issues after contacting the owner</li>
+            </ul>
+            <p style={{ fontSize: "12px", color: "#9ca3af", margin: "8px 0 0 0" }}>
+              For general questions, visit our <span
+                style={{ color: "#68AC5D", cursor: "pointer", textDecoration: "underline" }}
+                onClick={() => navigate("/help")}
+              >Help Center</span> instead.
+            </p>
+          </div>
         </div>
-        <div className="w-1/3 -translate-y-10 mx-auto">
-          <form
-            className="flex flex-col p-9 rounded-xl bg-white z-40"
-            onSubmit={submitDispute}
-          >
-            <h1 className="text-center text-xl mb-5">
-              Submit this form for faster assistance.
-            </h1>
-            <InputField
-              type="text"
-              value={partner_id}
-              onChange={(e) => setId(e.target.value)}
-              placeholder="Partner ID"
-            />
-            <InputField
-              type="text"
-              value={equipment_id}
-              onChange={(e) => setEquipmentId(e.target.value)}
-              placeholder="Equipment ID"
-            />
-            <InputField
-              type="text"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-            />
-            <InputField
-              type="text"
-              value={name}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Full Name"
-            />
-            <InputField
-              type="text"
-              value={phone_number}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              placeholder="Phone Number"
-            />
-            <select
-              id="topic"
-              name="topic"
-              autoComplete="topic-name"
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            >
-              <option disabled>Topic</option>
-              <option value={10}>Financial related</option>
-              <option value={20}>Commercial and product related</option>
-              <option value={30}>Breach of contract related</option>
-            </select>
-            <textarea
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Enter your message ..."
-              className="shadow-inner border-none w-100 rounded-2xl placeholder:font-semibold placeholder:text-gray-400 placeholder:text-md h-10 input-style mb-3 px-3 h-32 "
-            />
-            <p className="text-center">{message}</p>
+
+        {/* Success State */}
+        {success ? (
+          <div style={{
+            background: "#fff", borderRadius: "16px",
+            padding: "40px 32px", textAlign: "center",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+            border: "1px solid #e5e7eb",
+          }}>
+            <div style={{
+              width: "64px", height: "64px", borderRadius: "50%",
+              background: "#ecfdf5", display: "flex",
+              alignItems: "center", justifyContent: "center",
+              margin: "0 auto 16px auto",
+            }}>
+              <i className="fa-solid fa-circle-check" style={{
+                fontSize: "32px", color: "#16a34a",
+              }}></i>
+            </div>
+            <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#1f2937", margin: "0 0 8px 0" }}>
+              Dispute Submitted
+            </h2>
+            <p style={{ fontSize: "14px", color: "#6b7280", lineHeight: 1.6, margin: "0 0 24px 0" }}>
+              {message}
+            </p>
             <button
-              className="px-6 py-1 w-64 mx-auto rounded-lg text-white text-xl font-semibold"
-              style={{ backgroundColor: "#68AC5D" }}
-              type="submit"
+              onClick={() => navigate("/dashboard")}
+              style={{
+                background: "linear-gradient(135deg, #68AC5D, #4a9c3f)",
+                color: "#fff", border: "none", padding: "12px 32px",
+                borderRadius: "10px", fontWeight: 700, cursor: "pointer",
+                fontSize: "14px",
+              }}
             >
-              Submit Dispute
+              Back to Dashboard
             </button>
-            <p className="text-center text-green-300">{message}</p>
-          </form>
-        </div>
-        {/* <Footer /> */}
+          </div>
+        ) : (
+          /* Form */
+          <div style={{
+            background: "#fff", borderRadius: "16px",
+            padding: "32px",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
+            border: "1px solid #e5e7eb",
+          }}>
+            <h2 style={{
+              fontSize: "18px", fontWeight: 700, color: "#1f2937",
+              margin: "0 0 4px 0",
+            }}>
+              Dispute Details
+            </h2>
+            <p style={{ fontSize: "13px", color: "#9ca3af", margin: "0 0 24px 0" }}>
+              Provide as much detail as possible so we can investigate effectively.
+            </p>
+
+            {error && (
+              <div style={{
+                background: "#fef2f2", border: "1px solid #fca5a5",
+                borderRadius: "10px", padding: "12px 16px",
+                marginBottom: "20px", fontSize: "14px",
+                color: "#991b1b", fontWeight: 600,
+              }}>
+                <i className="fa-solid fa-circle-exclamation" style={{ marginRight: "8px" }}></i>
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={submitDispute}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
+                <div>
+                  <label style={labelStyle}>Your Name <span style={{ color: "#ef4444" }}>*</span></label>
+                  <input
+                    type="text" value={name}
+                    onChange={(e) => setFullName(e.target.value)}
+                    style={inputStyle} placeholder="Enter your full name"
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Phone Number <span style={{ color: "#ef4444" }}>*</span></label>
+                  <input
+                    type="text" value={phone_number}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    style={inputStyle} placeholder="Your contact number"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
+                <div>
+                  <label style={labelStyle}>Email</label>
+                  <input
+                    type="email" value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    style={inputStyle} placeholder="your@email.com"
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Equipment Name</label>
+                  <input
+                    type="text" value={equipment_id}
+                    onChange={(e) => setEquipmentId(e.target.value)}
+                    style={inputStyle} placeholder="Name of the equipment involved"
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: "14px" }}>
+                <label style={labelStyle}>Other Party (Name or Phone) </label>
+                <input
+                  type="text" value={partner_id}
+                  onChange={(e) => setPartnerId(e.target.value)}
+                  style={inputStyle} placeholder="Name or phone number of the other person"
+                />
+              </div>
+
+              <div style={{ marginBottom: "14px" }}>
+                <label style={labelStyle}>Dispute Category <span style={{ color: "#ef4444" }}>*</span></label>
+                <select
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  required
+                  style={{
+                    ...inputStyle,
+                    color: topic ? "#1f2937" : "#9ca3af",
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="" disabled>Select a category</option>
+                  <option value={10}>Financial / Payment issue</option>
+                  <option value={20}>Equipment / Product issue</option>
+                  <option value={30}>Breach of agreement</option>
+                </select>
+              </div>
+
+              <div style={{ marginBottom: "20px" }}>
+                <label style={labelStyle}>Describe the Issue <span style={{ color: "#ef4444" }}>*</span></label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={5}
+                  required
+                  placeholder="Explain what happened, include dates, booking IDs, and any relevant details..."
+                  style={{
+                    ...inputStyle,
+                    resize: "vertical",
+                    minHeight: "120px",
+                  }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  width: "100%",
+                  padding: "14px 24px",
+                  borderRadius: "12px",
+                  border: "none",
+                  background: loading ? "#9ca3af" : "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
+                  color: "#fff",
+                  fontSize: "16px",
+                  fontWeight: 700,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  boxShadow: "0 4px 14px rgba(220, 38, 38, 0.25)",
+                  transition: "all 0.3s ease",
+                }}
+              >
+                {loading ? (
+                  "Submitting..."
+                ) : (
+                  <>
+                    <i className="fa-solid fa-paper-plane" style={{ marginRight: "8px" }}></i>
+                    Submit Dispute
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );
+};
+
+const labelStyle = {
+  display: "block",
+  fontSize: "12px",
+  fontWeight: 700,
+  color: "#6b7280",
+  textTransform: "uppercase",
+  letterSpacing: "0.5px",
+  marginBottom: "6px",
+};
+
+const inputStyle = {
+  width: "100%",
+  padding: "11px 14px",
+  borderRadius: "10px",
+  border: "2px solid #e5e7eb",
+  fontSize: "14px",
+  fontWeight: 500,
+  color: "#1f2937",
+  outline: "none",
+  boxSizing: "border-box",
+  background: "#fff",
+  transition: "border-color 0.2s ease",
 };
 
 export default PartnerDispute;

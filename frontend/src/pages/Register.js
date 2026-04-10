@@ -1,21 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Cookies from "js-cookie";
+import "./auth.css";
 
-//Components
-import InputField from "../components/input/InputField";
-import { ErrorMsg, SuccessMsg } from "../components/alerts";
-import Loader from "../components/loader/";
-
-//Functions
 import { postRegisterData } from "../api/authAPI";
 import { isEmail, isEmpty, isValidPassword, isPhoneNumber, isPincode, isMatch } from "../utils/validation";
-
-//Images
-import cross_black from "../img/cross_black.svg";
 import logo from "../img/logo.png";
 
-/** Get display message from API error (never show raw HTML) */
+/** Get display message from API error */
 function getErrorMessage(err) {
   if (!err) return "Something went wrong. Please try again.";
   if (typeof err === "string") {
@@ -29,66 +21,123 @@ function getErrorMessage(err) {
   const phoneErr = err?.phone_number?.[0];
   if (phoneErr) {
     if (typeof phoneErr === "string") {
-      if (phoneErr.toLowerCase().includes("exists")) {
-        return "User already exists with this phone number.";
-      }
+      if (phoneErr.toLowerCase().includes("exists")) return "User already exists with this phone number.";
       return phoneErr;
     }
-    if (phoneErr.msg) return phoneErr.msg;
-    if (phoneErr.message) return phoneErr.message;
     return "User already exists with this phone number.";
   }
-
   const emailErr = err?.email?.[0];
   if (emailErr) {
     if (typeof emailErr === "string") {
-      if (emailErr.toLowerCase().includes("exists")) {
-        return "User already exists with this email.";
-      }
+      if (emailErr.toLowerCase().includes("exists")) return "User already exists with this email.";
       return emailErr;
     }
-    if (emailErr.msg) return emailErr.msg;
-    if (emailErr.message) return emailErr.message;
     return "User already exists with this email.";
   }
-
-  // Fallback: scan raw error text for duplicate messages
   try {
     const raw = JSON.stringify(err).toLowerCase();
-    if (raw.includes("email already exists")) {
-      return "User already exists with this email.";
-    }
-    if (raw.includes("phone number already exists") || raw.includes("user already exists")) {
+    if (raw.includes("email already exists")) return "User already exists with this email.";
+    if (raw.includes("phone number already exists") || raw.includes("user already exists"))
       return "User already exists with this phone number.";
-    }
-  } catch (_e) {
-    // ignore JSON stringify issues
-  }
-
+  } catch (_e) {}
   return "Registration failed. Please try again.";
 }
 
-const Register = ({ onClick }) => {
-  const [email, setEmail] = useState("");
+/** Password strength meter */
+function getPasswordStrength(pwd) {
+  if (!pwd || pwd.length < 4) return null;
+  let score = 0;
+  if (pwd.length >= 8) score++;
+  if (/[A-Z]/.test(pwd)) score++;
+  if (/[a-z]/.test(pwd)) score++;
+  if (/\d/.test(pwd)) score++;
+  if (/[^A-Za-z0-9]/.test(pwd)) score++;
+  if (score <= 2) return "weak";
+  if (score <= 3) return "medium";
+  return "strong";
+}
+
+const STEP_LABELS = ["Personal Info", "Security", "Contact"];
+
+const Register = () => {
+  const [step, setStep] = useState(1);
   const [first_name, setFirstName] = useState("");
   const [last_name, setLastName] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [pin_code, setPincode] = useState("");
   const [phone_number, setPhoneNumber] = useState("");
+  const [agreeTerms, setAgreeTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(false);
   const [message, setMessage] = useState("");
 
   const navigate = useNavigate();
-  const isPageRoute = typeof onClick !== "function";
 
   useEffect(() => {
-    if (isPageRoute && Cookies.get("refresh-token")) {
+    if (Cookies.get("refresh-token")) {
       navigate("/", { replace: true });
     }
-  }, [isPageRoute, navigate]);
+  }, [navigate]);
+
+  const strength = getPasswordStrength(password);
+
+  // ── Step validation ──
+  function validateStep(s) {
+    setError(false);
+    setMessage("");
+
+    if (s === 1) {
+      if (isEmpty(first_name) || isEmpty(last_name)) {
+        setError(true);
+        setMessage("Please enter your first and last name.");
+        return false;
+      }
+      if (email && !isEmail(email)) {
+        setError(true);
+        setMessage("Please enter a valid email address.");
+        return false;
+      }
+      return true;
+    }
+
+    if (s === 2) {
+      if (isEmpty(password)) {
+        setError(true);
+        setMessage("Please enter a password.");
+        return false;
+      }
+      if (!isValidPassword(password)) {
+        setError(true);
+        setMessage("Password must be at least 8 characters with letters and numbers.");
+        return false;
+      }
+      if (!isMatch(password, confirmPassword)) {
+        setError(true);
+        setMessage("Passwords do not match.");
+        return false;
+      }
+      return true;
+    }
+
+    return true;
+  }
+
+  function nextStep() {
+    if (validateStep(step)) {
+      setStep(step + 1);
+    }
+  }
+
+  function prevStep() {
+    setError(false);
+    setMessage("");
+    setStep(step - 1);
+  }
 
   async function handleRegister(e) {
     e.preventDefault();
@@ -96,46 +145,19 @@ const Register = ({ onClick }) => {
     setError(false);
     setSuccess(false);
 
-    if (
-      isEmpty(first_name) ||
-      isEmpty(last_name) ||
-      isEmpty(email) ||
-      isEmpty(password) ||
-      isEmpty(pin_code) ||
-      isEmpty(phone_number)
-    ) {
+    if (isEmpty(phone_number) || !isPhoneNumber(phone_number)) {
       setError(true);
-      setMessage("Please fill in all the required fields.");
+      setMessage("Please enter a valid 10-digit mobile number.");
       return;
     }
-
-    if (!isEmail(email)) {
-      setError(true);
-      setMessage("Please enter a valid email address.");
-      return;
-    }
-
-    if (!isValidPassword(password)) {
-      setError(true);
-      setMessage("Password must be at least 8 characters long and include letters and numbers.");
-      return;
-    }
-
-    if (!isMatch(password, confirmPassword)) {
-      setError(true);
-      setMessage("Passwords do not match.");
-      return;
-    }
-
-    if (!isPincode(pin_code)) {
+    if (isEmpty(pin_code) || !isPincode(pin_code)) {
       setError(true);
       setMessage("Please enter a valid 6-digit pincode.");
       return;
     }
-
-    if (!isPhoneNumber(phone_number)) {
+    if (!agreeTerms) {
       setError(true);
-      setMessage("Please enter a valid 10-digit mobile number.");
+      setMessage("Please agree to the Terms & Conditions.");
       return;
     }
 
@@ -155,145 +177,277 @@ const Register = ({ onClick }) => {
         setMessage("OTP sent to your mobile number for verification.");
         setLoading(false);
         sessionStorage.setItem("otp_phone_number", phone_number);
-        if (typeof onClick === "function") onClick(false);
         navigate("/verify-otp", { replace: true });
       }
-    } catch (error) {
+    } catch (err) {
       setLoading(false);
       setError(true);
-      setMessage(getErrorMessage(error) || "Server issue. Try again later.");
-      console.log(error);
+      setMessage(getErrorMessage(err));
     }
   }
 
-  const handleClose = () => {
-    if (typeof onClick === "function") onClick(false);
-    else navigate("/");
-  };
-
   return (
-    <div className="relative flex flex-col bg-[#219653] z-50 w-full min-h-screen overflow-x-hidden">
-      {error && message && (
-        <ErrorMsg
-          msg={message}
-          onClose={() => {
-            setError(false);
-            setMessage("");
-          }}
-        />
-      )}
-      {success && message && (
-        <SuccessMsg
-          msg={message}
-          onClose={() => {
-            setSuccess(false);
-            setMessage("");
-          }}
-        />
-      )}
-      <div className="absolute top-2 right-2 z-10">
-        <img
-          src={cross_black}
-          className="cursor-pointer hover:opacity-90 bg-[#E5E5E5] rounded-full p-2 shadow-xl"
-          alt="Close"
-          onClick={handleClose}
-        />
+    <div className="auth-page">
+      {/* ── LEFT BRANDED PANEL ── */}
+      <div className="auth-brand">
+        <div className="auth-brand-content">
+          <img src={logo} alt="KrushiMitra" className="auth-brand-logo" />
+          <h1>Join KrushiMitra</h1>
+          <p>
+            Create your free account to rent or list farm equipment.
+            Trusted by farmers across India.
+          </p>
+          <div className="auth-brand-dots">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
       </div>
-      {loading && <Loader />}
-      <div className="flex justify-center py-9 px-4 box-border w-full max-w-full min-h-screen">
-        <div
-          className="w-full max-w-md relative box-border"
-          style={{
-            backgroundColor: "#219653",
-            paddingTop: "3rem",
-            paddingBottom: "3rem",
-            paddingLeft: "1.5rem",
-            paddingRight: "1.5rem",
-            borderRadius: "1rem"
-          }}
-        >
-          <form
-            onSubmit={handleRegister}
-            className="bg-white relative p-6 sm:p-9 pt-3 mx-auto drop-shadow-md rounded-3xl flex flex-col justify-center text-center w-full max-w-lg box-border"
-            style={{ maxWidth: "28rem" }}
+
+      {/* ── RIGHT FORM PANEL ── */}
+      <div className="auth-form-panel">
+        <div className="auth-form-card">
+          <button
+            className="auth-close-btn"
+            onClick={() => navigate("/")}
+            aria-label="Close"
           >
-            <div className="absolute -top-12 float-center flex flex-col left-1/2 -translate-x-1/2">
-              <img
-                className="h-24 w-24 border-full mx-auto"
-                style={{
-                  filter: "drop-shadow(0px 4px 4px rgba(104, 172, 93, 0.25))"
-                }}
-                src={logo}
-                alt="logo"
-              />
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+
+          <h2>Create Account</h2>
+          <p className="auth-subtitle">
+            Step {step} of 3 — {STEP_LABELS[step - 1]}
+          </p>
+
+          {/* Step indicator */}
+          <div className="auth-steps">
+            <div className={`auth-step-dot ${step >= 1 ? (step > 1 ? "completed" : "active") : ""}`}></div>
+            <div className={`auth-step-line ${step > 1 ? "completed" : ""}`}></div>
+            <div className={`auth-step-dot ${step >= 2 ? (step > 2 ? "completed" : "active") : ""}`}></div>
+            <div className={`auth-step-line ${step > 2 ? "completed" : ""}`}></div>
+            <div className={`auth-step-dot ${step >= 3 ? "active" : ""}`}></div>
+          </div>
+
+          {/* Messages */}
+          {success && message && (
+            <div className="auth-message success">
+              <i className="fa-solid fa-circle-check"></i>
+              <span>{message}</span>
             </div>
-            <h1 className="text-2xl font-bold" style={{ marginTop: "3rem" }}>
-              Register Here
-            </h1>
-            <p className="font-semibold mb-4">Enter your details</p>
-            <InputField
-              placeholder="First Name*"
-              value={first_name}
-              onChange={(e) => setFirstName(e.target.value)}
-              type="text"
-              required={true}
-            />
-            <InputField
-              placeholder="Last Name*"
-              value={last_name}
-              onChange={(e) => setLastName(e.target.value)}
-              type="text"
-              required={true}
-            />
-            <InputField
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              type="text"
-              required={false}
-            />
-            <InputField
-              placeholder="Password*"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              required={true}
-            />
-            <InputField
-              placeholder="Confirm Password*"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              type="password"
-              required={true}
-            />
-            <InputField
-              placeholder="Pincode*"
-              value={pin_code}
-              onChange={(e) => setPincode(e.target.value)}
-              type="text"
-              required={true}
-            />
-            <InputField
-              placeholder="Phone Number*"
-              value={phone_number}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              type="text"
-              required={true}
-            />
-            <button
-              className="px-6 py-1 w-32 mx-auto rounded-lg text-white text-xl font-semibold bg-[#219653] hover:opacity-90"
-              type="submit"
-              disabled={loading}
-            >
-              Register
-            </button>
-            <p className="mt-4 text-center text-sm">
-              Already have an account?{" "}
-              <Link to="/login" className="text-[#219653] font-semibold underline">
-                Login
-              </Link>
-            </p>
-          </form>
+          )}
+          {error && message && (
+            <div className="auth-message error">
+              <i className="fa-solid fa-circle-exclamation"></i>
+              <span>{message}</span>
+            </div>
+          )}
+
+          {/* ── STEP 1: Personal Info ── */}
+          {step === 1 && (
+            <div>
+              <div className="auth-field">
+                <label htmlFor="reg-first-name">First Name <span className="required-star">*</span></label>
+                <div className="auth-input-wrap">
+                  <i className="fa-solid fa-user auth-input-icon"></i>
+                  <input
+                    id="reg-first-name"
+                    className="auth-input"
+                    type="text"
+                    placeholder="Enter your first name"
+                    value={first_name}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    autoComplete="given-name"
+                  />
+                </div>
+              </div>
+
+              <div className="auth-field">
+                <label htmlFor="reg-last-name">Last Name <span className="required-star">*</span></label>
+                <div className="auth-input-wrap">
+                  <i className="fa-solid fa-user auth-input-icon"></i>
+                  <input
+                    id="reg-last-name"
+                    className="auth-input"
+                    type="text"
+                    placeholder="Enter your last name"
+                    value={last_name}
+                    onChange={(e) => setLastName(e.target.value)}
+                    autoComplete="family-name"
+                  />
+                </div>
+              </div>
+
+              <div className="auth-field">
+                <label htmlFor="reg-email">Email Address</label>
+                <div className="auth-input-wrap">
+                  <i className="fa-solid fa-envelope auth-input-icon"></i>
+                  <input
+                    id="reg-email"
+                    className="auth-input"
+                    type="email"
+                    placeholder="you@example.com (optional)"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                  />
+                </div>
+              </div>
+
+              <button type="button" className="auth-btn auth-btn-primary" onClick={nextStep}>
+                Continue <i className="fa-solid fa-arrow-right"></i>
+              </button>
+            </div>
+          )}
+
+          {/* ── STEP 2: Security ── */}
+          {step === 2 && (
+            <div>
+              <div className="auth-field">
+                <label htmlFor="reg-password">Password <span className="required-star">*</span></label>
+                <div className="auth-input-wrap">
+                  <i className="fa-solid fa-lock auth-input-icon"></i>
+                  <input
+                    id="reg-password"
+                    className="auth-input"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Min. 8 characters, letters & numbers"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="auth-pwd-toggle"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label="Toggle password visibility"
+                  >
+                    <i className={`fa-solid ${showPassword ? "fa-eye-slash" : "fa-eye"}`}></i>
+                  </button>
+                </div>
+                {strength && (
+                  <div className="pwd-strength">
+                    <div className="pwd-strength-bar">
+                      <div className={`pwd-strength-fill ${strength}`}></div>
+                    </div>
+                    <span className={`pwd-strength-label ${strength}`}>
+                      {strength === "weak" ? "Weak" : strength === "medium" ? "Medium" : "Strong"}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="auth-field">
+                <label htmlFor="reg-confirm">Confirm Password <span className="required-star">*</span></label>
+                <div className="auth-input-wrap">
+                  <i className="fa-solid fa-lock auth-input-icon"></i>
+                  <input
+                    id="reg-confirm"
+                    className={`auth-input ${confirmPassword && !isMatch(password, confirmPassword) ? "has-error" : ""}`}
+                    type={showConfirm ? "text" : "password"}
+                    placeholder="Re-enter your password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    className="auth-pwd-toggle"
+                    onClick={() => setShowConfirm(!showConfirm)}
+                    aria-label="Toggle password visibility"
+                  >
+                    <i className={`fa-solid ${showConfirm ? "fa-eye-slash" : "fa-eye"}`}></i>
+                  </button>
+                </div>
+                {confirmPassword && !isMatch(password, confirmPassword) && (
+                  <div className="auth-field-error">
+                    <i className="fa-solid fa-circle-exclamation"></i> Passwords do not match
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: "flex", gap: 12 }}>
+                <button type="button" className="auth-btn auth-btn-secondary" onClick={prevStep}>
+                  <i className="fa-solid fa-arrow-left"></i> Back
+                </button>
+                <button type="button" className="auth-btn auth-btn-primary" onClick={nextStep}>
+                  Continue <i className="fa-solid fa-arrow-right"></i>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 3: Contact & Submit ── */}
+          {step === 3 && (
+            <form onSubmit={handleRegister} noValidate>
+              <div className="auth-field">
+                <label htmlFor="reg-phone">Mobile Number <span className="required-star">*</span></label>
+                <div className="auth-input-wrap">
+                  <i className="fa-solid fa-phone auth-input-icon"></i>
+                  <input
+                    id="reg-phone"
+                    className="auth-input"
+                    type="tel"
+                    placeholder="10-digit mobile number"
+                    value={phone_number}
+                    onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                    autoComplete="tel"
+                    maxLength={10}
+                  />
+                </div>
+              </div>
+
+              <div className="auth-field">
+                <label htmlFor="reg-pincode">Pincode <span className="required-star">*</span></label>
+                <div className="auth-input-wrap">
+                  <i className="fa-solid fa-location-dot auth-input-icon"></i>
+                  <input
+                    id="reg-pincode"
+                    className="auth-input"
+                    type="text"
+                    placeholder="6-digit area pincode"
+                    value={pin_code}
+                    onChange={(e) => setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    maxLength={6}
+                  />
+                </div>
+              </div>
+
+              <div className="auth-checkbox">
+                <input
+                  type="checkbox"
+                  id="reg-terms"
+                  checked={agreeTerms}
+                  onChange={(e) => setAgreeTerms(e.target.checked)}
+                />
+                <label htmlFor="reg-terms">
+                  I agree to the <a href="/policy" target="_blank" rel="noopener noreferrer">Terms & Conditions</a> and{" "}
+                  <a href="/policy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+                </label>
+              </div>
+
+              <div style={{ display: "flex", gap: 12 }}>
+                <button type="button" className="auth-btn auth-btn-secondary" onClick={prevStep}>
+                  <i className="fa-solid fa-arrow-left"></i> Back
+                </button>
+                <button
+                  className="auth-btn auth-btn-primary"
+                  type="submit"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <><span className="auth-spinner"></span> Creating Account...</>
+                  ) : (
+                    <>Create Account <i className="fa-solid fa-user-plus"></i></>
+                  )}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* ── Footer link ── */}
+          <div className="auth-link-row">
+            Already have an account? <Link to="/login">Sign In</Link>
+          </div>
         </div>
       </div>
     </div>

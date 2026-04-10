@@ -736,6 +736,95 @@
   to { transform: rotate(360deg); }
 }
 
+/* ── Skeleton Loader ── */
+.br-skeleton-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.br-skeleton-card {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #f3f4f6;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  overflow: hidden;
+}
+
+.br-skeleton-header {
+  padding: 24px 28px;
+  border-bottom: 1px solid #f3f4f6;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.br-skeleton-body {
+  padding: 28px;
+}
+
+.br-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.br-skel {
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: br-shimmer 1.5s ease-in-out infinite;
+}
+
+.br-skel-back { width: 120px; height: 36px; border-radius: 10px; }
+.br-skel-badge-lg { width: 100px; height: 28px; border-radius: 20px; }
+.br-skel-id { width: 130px; height: 28px; }
+.br-skel-badge { width: 90px; height: 28px; border-radius: 20px; }
+.br-skel-block { height: 120px; border-radius: 14px; }
+.br-skel-line-long { width: 80%; height: 16px; margin-bottom: 12px; }
+.br-skel-line-md { width: 55%; height: 16px; margin-bottom: 12px; }
+.br-skel-line-short { width: 35%; height: 16px; }
+
+@keyframes br-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Message Animation & Dismiss ── */
+.br-msg {
+  position: relative;
+}
+
+.br-msg-animate {
+  animation: br-msg-slide-in 0.3s ease;
+}
+
+@keyframes br-msg-slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.br-msg-dismiss {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: inherit;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  padding: 4px;
+}
+
+.br-msg-dismiss:hover {
+  opacity: 1;
+}
+
 /* ── Overdue Rental Banner ── */
 .br-overdue-banner {
   display: flex;
