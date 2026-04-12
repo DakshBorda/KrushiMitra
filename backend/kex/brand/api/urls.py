@@ -1,7 +1,6 @@
 from django.urls.conf import path, include
 from kex.brand.api.views import (
     BrandCreateAPIView,
-    BrandCreateAPIView,
     BrandUpdateAPIView,
     BrandListAPIView,
 )

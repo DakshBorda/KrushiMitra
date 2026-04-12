@@ -8,7 +8,7 @@ from kex.enquiry.api.views import (
 )
 
 
-app_name = "users"
+app_name = "enquiry"
 urlpatterns = [
     path("help-centre", view=HelpCentreView.as_view(), name="help_centre"),
     path("partner-dispute", view=PartnerDisputeView.as_view(), name="partner_dispute"),

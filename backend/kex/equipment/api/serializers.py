@@ -323,6 +323,21 @@ class EquipmentCreateSerializer(ModelSerializer):
             if not data.get("image_1"):
                 raise ValidationError({"image_1": "At least one equipment image is required."})
 
+        # ── Brand ↔ EquipmentType match validation ──
+        # Only validate on creation or when these fields are being changed
+        manufacturer = data.get("manufacturer")
+        equipment_type = data.get("equipment_type")
+        if manufacturer and equipment_type:
+            # Check if this brand supports the selected equipment type
+            if manufacturer.equipment_type.exists() and not manufacturer.equipment_type.filter(pk=equipment_type.pk).exists():
+                supported = ", ".join(t.name for t in manufacturer.equipment_type.all())
+                raise ValidationError({
+                    "manufacturer": (
+                        f"{manufacturer.name} does not produce {equipment_type.name} equipment. "
+                        f"Supported categories: {supported}."
+                    )
+                })
+
         return data
 
 

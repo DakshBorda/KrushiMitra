@@ -1,29 +1,70 @@
-/* KrushiMitra Admin Custom Styles */
-/* Green accent overrides for jazzmin/AdminLTE theme */
+/* ═══════════════════════════════════════════
+   KrushiMitra Admin — Custom Styles
+   Green accent overrides for jazzmin/AdminLTE
+   ═══════════════════════════════════════════ */
+
+/* ── Google Fonts ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
     --km-green: #68AC5D;
     --km-green-dark: #4a8a42;
     --km-green-light: #e8f5e6;
+    --km-green-50: #f0f9ee;
+    --km-text: #1f2937;
+    --km-text-muted: #6b7280;
+    --km-border: #e5e7eb;
+    --km-card-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+    --km-radius: 10px;
 }
 
-/* Navbar brand color override */
+/* ── Base Typography ── */
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ── Navbar ── */
 .main-header.navbar {
     background: linear-gradient(135deg, #68AC5D 0%, #4a8a42 100%) !important;
     border-bottom: 3px solid #4a8a42;
 }
 
-/* Sidebar active link */
+/* ── Sidebar ── */
 .nav-sidebar .nav-link.active {
     background-color: var(--km-green) !important;
     color: #fff !important;
+    border-radius: 6px;
 }
 
 .nav-sidebar .nav-link:hover {
     background-color: var(--km-green-light) !important;
+    border-radius: 6px;
 }
 
-/* Buttons - success green */
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link,
+.sidebar-dark-success .nav-sidebar > .nav-item > .nav-link {
+    border-radius: 6px;
+    margin: 2px 8px;
+    transition: all 0.2s ease;
+}
+
+.brand-link {
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+    font-weight: 700 !important;
+}
+
+/* Sidebar section headers — cleaner */
+.nav-sidebar .nav-header {
+    text-transform: uppercase;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    color: rgba(255,255,255,0.4) !important;
+    padding: 12px 16px 4px;
+}
+
+/* ── Buttons ── */
 .btn-success, .btn-outline-success:hover {
     background-color: var(--km-green) !important;
     border-color: var(--km-green) !important;
@@ -34,101 +75,21 @@
     border-color: var(--km-green) !important;
 }
 
-/* Links */
-a {
-    color: var(--km-green-dark);
-}
+/* ── Links ── */
+a { color: var(--km-green-dark); }
+a:hover { color: var(--km-green); }
 
-a:hover {
-    color: var(--km-green);
-}
-
-/* Admin page title */
-.content-header h1 {
-    font-weight: 600;
-    color: #2d3748;
-}
-
-/* Card headers */
-.card-header {
-    background: var(--km-green-light) !important;
-    border-bottom: 2px solid var(--km-green) !important;
-}
-
-.card-header .card-title {
-    color: var(--km-green-dark) !important;
-    font-weight: 600;
-}
-
-/* Table styling */
-.table thead th {
-    background-color: var(--km-green) !important;
-    color: white !important;
-    font-weight: 600;
-    border: none !important;
-}
-
-.table-striped tbody tr:nth-of-type(odd) {
-    background-color: var(--km-green-light);
-}
-
-/* Badge / Pill styles for status */
-.badge-success {
-    background-color: var(--km-green) !important;
-}
-
-/* Login page customization */
-.login-page {
-    background: linear-gradient(135deg, #68AC5D 0%, #2d5a27 100%) !important;
-}
-
-.login-box .card {
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-}
-
-.login-box .btn-primary {
-    background-color: var(--km-green) !important;
-    border-color: var(--km-green) !important;
-    border-radius: 8px;
-    padding: 10px;
-    font-weight: 600;
-}
-
-/* Sidebar brand */
-.brand-link {
-    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
-    font-weight: 700 !important;
-}
-
-/* Pagination active */
-.page-item.active .page-link {
-    background-color: var(--km-green) !important;
-    border-color: var(--km-green) !important;
-}
-
-/* Select2 / Form focus */
-.form-control:focus {
-    border-color: var(--km-green) !important;
-    box-shadow: 0 0 0 0.2rem rgba(104, 172, 93, 0.25) !important;
-}
-
-/* Dashboard info boxes */
-.info-box .info-box-icon {
-    border-radius: 8px;
-}
-
-/* Smooth transitions */
 .nav-link, .btn, a {
     transition: all 0.2s ease;
 }
 
-/* ── Enhanced Typography ── */
-body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+/* ── Page Header ── */
+.content-header h1 {
+    font-weight: 700;
+    color: var(--km-text);
+    font-size: 1.5rem;
 }
 
-/* ── Breadcrumb styling ── */
 .breadcrumb {
     background: transparent !important;
     padding: 0 !important;
@@ -140,10 +101,245 @@ body {
 }
 
 .breadcrumb-item.active {
-    color: #6b7280 !important;
+    color: var(--km-text-muted) !important;
 }
 
-/* ── Dashboard stat cards ── */
+/* ── Cards ── */
+.card {
+    border-radius: var(--km-radius) !important;
+    border: none !important;
+    box-shadow: var(--km-card-shadow) !important;
+}
+
+.card-header {
+    background: var(--km-green-50) !important;
+    border-bottom: 2px solid var(--km-green) !important;
+    border-radius: var(--km-radius) var(--km-radius) 0 0 !important;
+}
+
+.card-header .card-title {
+    color: var(--km-green-dark) !important;
+    font-weight: 700;
+}
+
+/* ── Content area ── */
+.content-wrapper {
+    background: #f8faf9 !important;
+}
+
+/* ═══════════════════════════════════════════
+   Tables
+   ═══════════════════════════════════════════ */
+.table thead th {
+    background-color: var(--km-green) !important;
+    color: white !important;
+    font-weight: 600;
+    border: none !important;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding: 12px 16px !important;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: var(--km-green-50);
+}
+
+.table tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+.table tbody tr:hover {
+    background-color: var(--km-green-light) !important;
+}
+
+.table td {
+    vertical-align: middle !important;
+    padding: 10px 16px !important;
+    font-size: 14px;
+}
+
+/* ═══════════════════════════════════════════
+   Forms — Input, Select, Textarea
+   ═══════════════════════════════════════════ */
+.form-control,
+select.form-control {
+    border-radius: 8px !important;
+    border: 2px solid var(--km-border) !important;
+    padding: 8px 14px !important;
+    font-size: 14px !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-control:focus {
+    border-color: var(--km-green) !important;
+    box-shadow: 0 0 0 3px rgba(104, 172, 93, 0.15) !important;
+}
+
+/* Readonly fields */
+.readonly {
+    background-color: #f9fafb;
+    color: var(--km-text-muted);
+}
+
+/* Form field labels */
+.form-group label,
+fieldset .form-row label {
+    font-weight: 600;
+    color: var(--km-text);
+    font-size: 13px;
+}
+
+/* Help text — cleaner */
+.form-text,
+.help-block,
+.helptext {
+    color: var(--km-text-muted) !important;
+    font-size: 12px !important;
+    font-style: italic;
+    margin-top: 4px;
+}
+
+/* Fieldset description text */
+fieldset .description {
+    background: var(--km-green-50);
+    border: 1px solid var(--km-green);
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: var(--km-green-dark);
+    font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════
+   Checkbox M2M Widget (replaces filter_horizontal)
+   Renders as a clean tag-like grid of options
+   ═══════════════════════════════════════════ */
+
+/* Remove all list bullets from checkbox lists */
+ul,
+fieldset ul,
+.form-group ul,
+.checkbox-list,
+ul[id*="equipment_type"],
+ul[id*="id_equipment_type"] {
+    list-style: none !important;
+    list-style-type: none !important;
+}
+
+/* Target the specific M2M checkbox list rendered by Django */
+fieldset ul {
+    padding: 0 !important;
+    margin: 0 !important;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+fieldset ul li {
+    list-style: none !important;
+    list-style-type: none !important;
+    display: inline-flex !important;
+    align-items: center;
+    background: var(--km-green-50);
+    border: 2px solid var(--km-border);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--km-text);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+/* Remove bullet markers (extra safety) */
+fieldset ul li::marker {
+    content: none !important;
+    display: none !important;
+}
+
+fieldset ul li::before {
+    content: none !important;
+    display: none !important;
+}
+
+fieldset ul li:hover {
+    border-color: var(--km-green);
+    background: var(--km-green-light);
+}
+
+fieldset ul li label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    margin: 0;
+    font-weight: 500;
+    color: var(--km-text);
+}
+
+fieldset ul li input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--km-green);
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+/* ═══════════════════════════════════════════
+   Hide confusing related-field popup buttons
+   (the green +, pencil, and x icons next to dropdowns)
+   ═══════════════════════════════════════════ */
+.related-widget-wrapper .add-related,
+.related-widget-wrapper .change-related,
+.related-widget-wrapper .delete-related,
+.related-widget-wrapper .related-lookup {
+    display: none !important;
+}
+
+/* ═══════════════════════════════════════════
+   Fieldsets
+   ═══════════════════════════════════════════ */
+fieldset {
+    border: 2px solid var(--km-border) !important;
+    border-radius: var(--km-radius) !important;
+    padding: 20px !important;
+    margin-bottom: 20px !important;
+}
+
+fieldset h2,
+fieldset .collapse-toggle {
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    color: var(--km-green-dark) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Collapsible fieldsets — cleaner toggle styling */
+fieldset.collapsed {
+    border-color: var(--km-border) !important;
+    background: var(--km-green-50);
+}
+
+fieldset.collapsed h2 {
+    cursor: pointer;
+}
+
+/* ═══════════════════════════════════════════
+   Status Badges (inline HTML from admin)
+   ═══════════════════════════════════════════ */
+td span[style*="border-radius"] {
+    display: inline-block;
+    min-width: 80px;
+    text-align: center;
+}
+
+/* ═══════════════════════════════════════════
+   Dashboard Stat Cards
+   ═══════════════════════════════════════════ */
 .small-box {
     border-radius: 12px !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
@@ -160,27 +356,18 @@ body {
     opacity: 0.15 !important;
 }
 
-/* ── Card improvements ── */
-.card {
-    border-radius: 10px !important;
-    border: none !important;
-    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06) !important;
+.info-box .info-box-icon {
+    border-radius: 8px;
 }
 
-.card-header {
-    border-radius: 10px 10px 0 0 !important;
+/* Badge */
+.badge-success {
+    background-color: var(--km-green) !important;
 }
 
-/* ── Table row hover ── */
-.table tbody tr {
-    transition: background-color 0.15s ease;
-}
-
-.table tbody tr:hover {
-    background-color: var(--km-green-light) !important;
-}
-
-/* ── Action buttons spacing ── */
+/* ═══════════════════════════════════════════
+   Action Buttons (top-right of change view)
+   ═══════════════════════════════════════════ */
 .object-tools li {
     margin-left: 8px;
 }
@@ -188,34 +375,293 @@ body {
 .object-tools a {
     border-radius: 6px !important;
     padding: 6px 14px !important;
-    font-weight: 500 !important;
+    font-weight: 600 !important;
+    font-size: 12px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
-/* ── Content wrapper padding ── */
-.content-wrapper {
-    background: #f8faf9 !important;
+/* Submit row styling */
+.submit-row {
+    background: var(--km-green-50) !important;
+    border-top: 2px solid var(--km-green) !important;
+    border-radius: 0 0 var(--km-radius) var(--km-radius);
+    padding: 12px 14px !important;
 }
 
-/* ── Sidebar polish ── */
-.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link {
-    border-radius: 6px;
-    margin: 2px 8px;
+.submit-row input[type="submit"] {
+    border-radius: 8px !important;
+    padding: 8px 20px !important;
+    font-weight: 700 !important;
+    font-size: 14px !important;
+    transition: all 0.2s ease;
 }
 
-/* ── Footer ── */
+/* ═══════════════════════════════════════════
+   Action Bar (top of list views)
+   Clean, non-confusing design
+   ═══════════════════════════════════════════ */
+.actions {
+    padding: 10px 16px !important;
+    background: var(--km-green-50) !important;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    border: 1px solid var(--km-border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.actions select {
+    border-radius: 6px !important;
+    border: 2px solid var(--km-border) !important;
+    padding: 6px 12px !important;
+    font-size: 13px !important;
+    font-weight: 600;
+    min-width: 220px;
+    color: var(--km-text);
+    background-color: white;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.actions select:focus {
+    border-color: var(--km-green) !important;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(104, 172, 93, 0.15);
+}
+
+/* Style the "Go" button */
+.actions button[type="submit"] {
+    background: var(--km-green) !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 6px 16px !important;
+    font-weight: 700 !important;
+    font-size: 13px !important;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: 2px;
+}
+
+.actions button[type="submit"]:hover {
+    background: var(--km-green-dark) !important;
+    transform: translateY(-1px);
+}
+
+/* Selection counter */
+.actions .action-counter {
+    font-weight: 600;
+    color: var(--km-text-muted);
+    font-size: 13px;
+}
+
+/* ═══════════════════════════════════════════
+   Role Badges in User List
+   ═══════════════════════════════════════════ */
+td span[style*="border-radius: 12px"],
+td span[style*="border-radius:12px"] {
+    display: inline-block;
+    min-width: 70px;
+    text-align: center;
+    letter-spacing: 0.3px;
+}
+
+/* ═══════════════════════════════════════════
+   Password Field — Hide raw hash display
+   ═══════════════════════════════════════════ */
+.field-password .readonly {
+    font-family: inherit !important;
+    white-space: normal !important;
+    word-break: normal !important;
+}
+
+/* ═══════════════════════════════════════════
+   Pagination
+   ═══════════════════════════════════════════ */
+.page-item.active .page-link {
+    background-color: var(--km-green) !important;
+    border-color: var(--km-green) !important;
+}
+
+.page-link {
+    color: var(--km-green-dark) !important;
+    border-radius: 6px !important;
+    margin: 0 2px;
+}
+
+/* ═══════════════════════════════════════════
+   Date Hierarchy
+   ═══════════════════════════════════════════ */
+.xfull {
+    background: var(--km-green-50);
+    padding: 8px 16px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    border: 1px solid var(--km-border);
+}
+
+.xfull a {
+    font-weight: 600;
+    margin: 0 4px;
+}
+
+/* ═══════════════════════════════════════════
+   Login Page
+   ═══════════════════════════════════════════ */
+.login-page {
+    background: linear-gradient(135deg, #68AC5D 0%, #2d5a27 100%) !important;
+}
+
+.login-box .card {
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.login-box .btn-primary {
+    background-color: var(--km-green) !important;
+    border-color: var(--km-green) !important;
+    border-radius: 8px;
+    padding: 10px;
+    font-weight: 700;
+    font-size: 15px;
+}
+
+/* ═══════════════════════════════════════════
+   Footer
+   ═══════════════════════════════════════════ */
 .main-footer {
     border-top: 2px solid var(--km-green-light) !important;
     font-size: 13px;
-    color: #6b7280;
+    color: var(--km-text-muted);
 }
 
-/* ── Responsive fixes ── */
+/* ═══════════════════════════════════════════
+   Inline Admin (TabularInline)
+   ═══════════════════════════════════════════ */
+.tabular .module table thead th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.inline-group .tabular td {
+    padding: 8px 12px;
+    font-size: 13px;
+}
+
+/* ═══════════════════════════════════════════
+   Empty state
+   ═══════════════════════════════════════════ */
+.help-block,
+p.paginator {
+    font-size: 13px;
+    color: var(--km-text-muted);
+}
+
+/* ═══════════════════════════════════════════
+   Boolean field display (True/False → icons)
+   ═══════════════════════════════════════════ */
+td img[src*="icon-yes"],
+td img[src*="icon-no"],
+td img[src*="icon-unknown"] {
+    width: 16px;
+    height: 16px;
+}
+
+/* ═══════════════════════════════════════════
+   Search bar in top navbar — cleaner
+   ═══════════════════════════════════════════ */
+.navbar .form-inline .form-control {
+    border-radius: 20px !important;
+    border: none !important;
+    padding: 6px 16px !important;
+    font-size: 13px !important;
+    background: rgba(255,255,255,0.2) !important;
+    color: white !important;
+}
+
+.navbar .form-inline .form-control::placeholder {
+    color: rgba(255,255,255,0.7) !important;
+}
+
+.navbar .form-inline .form-control:focus {
+    background: rgba(255,255,255,0.3) !important;
+    box-shadow: none !important;
+}
+
+/* ═══════════════════════════════════════════
+   Filter Sidebar - Cleaner Dropdowns
+   ═══════════════════════════════════════════ */
+.changelist-filter select,
+#changelist-filter select {
+    border-radius: 6px !important;
+    border: 2px solid var(--km-border) !important;
+    padding: 6px 10px !important;
+    font-size: 13px !important;
+    font-weight: 500;
+    color: var(--km-text);
+}
+
+/* ═══════════════════════════════════════════
+   Username field — hide on change forms
+   (set via admin exclude, but safety fallback)
+   ═══════════════════════════════════════════ */
+.field-username .help {
+    display: none !important;
+}
+
+/* ═══════════════════════════════════════════
+   Responsive
+   ═══════════════════════════════════════════ */
 @media (max-width: 768px) {
     .content-header h1 {
         font-size: 1.2rem;
     }
-    
+
     .small-box {
         margin-bottom: 12px !important;
     }
+
+    .table td {
+        padding: 8px 10px !important;
+        font-size: 13px;
+    }
+
+    fieldset {
+        padding: 12px !important;
+    }
+
+    fieldset ul {
+        flex-direction: column;
+    }
+
+    .actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .actions select {
+        min-width: 100% !important;
+    }
 }
+
+@media (max-width: 576px) {
+    .table thead th {
+        font-size: 11px;
+        padding: 8px 10px !important;
+    }
+
+    .object-tools {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .object-tools li {
+        margin: 0;
+    }
+}
+

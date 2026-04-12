@@ -93,7 +93,7 @@ class EquipmentCreateAPIView(CreateAPIView):
                 data=EquipmentCreateSerializer(equipment).data,
                 msg="Equipment has been created",
             ),
-            status=status.HTTP_200_OK,
+            status=status.HTTP_201_CREATED,
         )
 
 

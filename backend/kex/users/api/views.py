@@ -20,15 +20,11 @@ class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     lookup_field = "uuid"
 
-    def get_queryset(self, *args, **kwargs):
-        try:
-            user = self.queryset.get(uuid=kwargs.get("uuid"))
-            return user
-        except User.DoesNotExist:
-            raise NotFound("User doesn't exists")
+    def get_queryset(self):
+        return User.objects.filter(is_verified=True, is_superuser=False)
 
     def update(self, request, *args, **kwargs):
-        user = self.get_queryset(*args, **kwargs)
+        user = self.get_object()
         if user.user_id != request.user.user_id:
             raise AuthenticationFailed(f"Invalid token for uuid {kwargs.get('uuid')}")
 
@@ -52,7 +48,7 @@ class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
         )
 
     def retrieve(self, request, *args, **kwargs):
-        user = self.get_queryset(*args, **kwargs)
+        user = self.get_object()
         if user.user_id != request.user.user_id:
             raise AuthenticationFailed(f"Invalid token for uuid {kwargs.get('uuid')}")
 

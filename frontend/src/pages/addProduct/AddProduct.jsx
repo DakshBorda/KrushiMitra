@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./AddProduct.css";
-import { createEquipment, getBrands, getEquipsList } from "../../api/equipments";
+import { createEquipment, getBrands, getBrandsByType, getEquipsList } from "../../api/equipments";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
@@ -17,7 +17,9 @@ const AddProduct = () => {
 
   const [step, setStep] = useState(0);
   const [equipmentTypes, setEquipmentTypes] = useState([]);
-  const [brands, setBrands] = useState([]);
+  const [allBrands, setAllBrands] = useState([]);   // All brands (unfiltered)
+  const [brands, setBrands] = useState([]);           // Filtered by equipment type
+  const [brandsLoading, setBrandsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const submitLockRef = useRef(false);  // Synchronous lock to prevent double-submit
@@ -43,11 +45,41 @@ const AddProduct = () => {
       try {
         const [t, b] = await Promise.all([getEquipsList(), getBrands()]);
         if (t?.data) setEquipmentTypes(t.data);
-        if (b?.data) setBrands(b.data);
+        if (b?.data) {
+          setAllBrands(b.data);
+          setBrands(b.data);  // Show all initially
+        }
       } catch (e) { console.log(e); }
     }
     load();
   }, []);
+
+  // ── Cascade: filter brands when equipment type changes ──
+  useEffect(() => {
+    if (!data.equipment_type) {
+      setBrands(allBrands);  // Show all if no type selected
+      return;
+    }
+    let cancelled = false;
+    async function loadFilteredBrands() {
+      setBrandsLoading(true);
+      try {
+        const res = await getBrandsByType(data.equipment_type);
+        if (!cancelled && res?.data) {
+          setBrands(res.data);
+        } else if (!cancelled) {
+          setBrands(allBrands);  // Fallback to all brands
+        }
+      } catch (e) {
+        if (!cancelled) setBrands(allBrands);
+      } finally {
+        if (!cancelled) setBrandsLoading(false);
+      }
+    }
+    loadFilteredBrands();
+    return () => { cancelled = true; };  // Cleanup on re-trigger
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.equipment_type]);
 
   const updateField = (field, value) => {
     setData((p) => ({ ...p, [field]: value }));
@@ -70,6 +102,17 @@ const AddProduct = () => {
   };
 
   const todayStr = new Date().toISOString().slice(0, 10);
+
+  // ── Name resolvers for review step ──
+  const getTypeName = (id) => {
+    const found = equipmentTypes.find((t) => String(t.id) === String(id));
+    return found ? found.name : "—";
+  };
+  const getBrandName = (id) => {
+    // Use allBrands because filtered `brands` may not contain the selected one
+    const found = allBrands.find((b) => String(b.id) === String(id));
+    return found ? found.name : "—";
+  };
 
   // ── Validation per step ──
   const validateStep = (s) => {
@@ -164,8 +207,7 @@ const AddProduct = () => {
     );
   }
 
-  const getBrandName = (id) => brands.find((b) => String(b.id) === String(id))?.name || "—";
-  const getTypeName = (id) => equipmentTypes.find((t) => String(t.id) === String(id))?.name || "—";
+
 
   return (
     <div className="ap-page">
@@ -216,7 +258,11 @@ const AddProduct = () => {
                 </div>
                 <div className="ap-field">
                   <label>Equipment Type *</label>
-                  <select value={data.equipment_type} onChange={(e) => updateField("equipment_type", e.target.value)}
+                  <select value={data.equipment_type} onChange={(e) => {
+                    updateField("equipment_type", e.target.value);
+                    // Reset manufacturer when type changes
+                    setData((p) => ({ ...p, manufacturer: "" }));
+                  }}
                     className={errors.equipment_type ? "error" : ""}>
                     <option value="">Select Type</option>
                     {equipmentTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -226,8 +272,17 @@ const AddProduct = () => {
                 <div className="ap-field">
                   <label>Manufacturer *</label>
                   <select value={data.manufacturer} onChange={(e) => updateField("manufacturer", e.target.value)}
-                    className={errors.manufacturer ? "error" : ""}>
-                    <option value="">Select Brand</option>
+                    className={errors.manufacturer ? "error" : ""}
+                    disabled={!data.equipment_type || brandsLoading}>
+                    <option value="">
+                      {!data.equipment_type
+                        ? "← Select equipment type first"
+                        : brandsLoading
+                          ? "Loading brands..."
+                          : brands.length === 0
+                            ? "No brands for this type"
+                            : "Select Brand"}
+                    </option>
                     {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                   </select>
                   {errors.manufacturer && <span className="ap-field-error">{errors.manufacturer}</span>}

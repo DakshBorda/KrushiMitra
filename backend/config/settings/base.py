@@ -258,7 +258,7 @@ CACHES = {
 # Django Admin URL.
 ADMIN_URL = "admin/"
 # https://docs.djangoproject.com/en/dev/ref/settings/#admins
-ADMINS = [("""Daniel Roy Greenfeld""", "daniel-roy-greenfeld@example.com")]
+ADMINS = [("KrushiMitra Admin", env("DJANGO_ADMIN_EMAIL", default="admin@krushimitra.com"))]
 # https://docs.djangoproject.com/en/dev/ref/settings/#managers
 MANAGERS = ADMINS
 
@@ -346,15 +346,14 @@ REST_FRAMEWORK = {
 }
 
 # django-cors-headers - https://github.com/adamchainz/django-cors-headers#setup
-CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
-
-# CORS_URLS_REGEX = r"^/api/.*$"
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:3000",
-#     "http://127.0.0.1:3000",
-#     "https://krishi-sadhan-app.herokuapp.com",
-# ]
+CORS_ALLOWED_ORIGINS = env.list(
+    "CORS_ALLOWED_ORIGINS",
+    default=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
+)
 
 # By Default swagger ui is available only to admin user. You can change permission classs to change that
 # See more configuration options at https://drf-spectacular.readthedocs.io/en/latest/settings.html#settings
@@ -379,7 +378,7 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": False,
     "UPDATE_LAST_LOGIN": False,
     "ALGORITHM": "HS256",
-    "SIGNING_KEY": env.str("DJANGO_SECRET_KEY", default=""),
+    "SIGNING_KEY": env.str("DJANGO_SECRET_KEY", default="unsafe-change-me"),
     "VERIFYING_KEY": None,
     "AUDIENCE": None,
     "ISSUER": None,
@@ -415,7 +414,7 @@ JAZZMIN_SETTINGS = {
     "site_header": "KrushiMitra",
     "site_brand": "KrushiMitra",
     "welcome_sign": "Welcome to KrushiMitra Admin Panel",
-    "copyright": "KrushiMitra - Farm Equipment Rental Platform",
+    "copyright": "KrushiMitra — Farm Equipment Rental Platform",
 
     # Logo — displayed in sidebar header and login page
     "site_logo": "images/logo.png",
@@ -423,73 +422,106 @@ JAZZMIN_SETTINGS = {
     "site_logo_classes": "img-circle",
     "site_icon": "images/logo.png",
 
-    # Search
+    # Search — search bar at top of admin
     "search_model": ["users.User", "equipment.Equipment"],
 
-    # Top Menu Links
+    # Top Menu Links (header bar)
     "topmenu_links": [
         {"name": "Dashboard", "url": "admin:index", "permissions": ["auth.view_user"]},
-        {"name": "Visit Site", "url": "http://localhost:3000", "new_window": True},
-        {"name": "API Docs", "url": "/api/docs/", "new_window": True},
+        {"name": "Visit Site", "url": "/", "new_window": True},
     ],
 
     # User Avatar
     "user_avatar": "profile_picture",
 
-    # Side Menu
+    # ── Sidebar Configuration ──
     "show_sidebar": True,
     "navigation_expanded": True,
-    "hide_apps": ["authtoken", "sites"],
-    "hide_models": [],
 
-    # Custom Order
+    # Hide apps that should not appear as separate sidebar sections
+    "hide_apps": [
+        "authtoken",
+        "sites",
+        "socialaccount",
+        "account",
+        "django_celery_beat",
+        "auth",
+        "brand",           # Merged under Equipment Catalog as custom link
+        "equipment_type",  # Merged under Equipment Catalog as custom link
+    ],
+
+    # Hide models that are too technical for admins
+    "hide_models": [
+        "auth.Group",
+        "users.PasswordResetOTP",
+    ],
+
+    # ── Custom sidebar links — merge Brand & EquipmentType under Equipment ──
+    "custom_links": {
+        "equipment": [
+            {
+                "name": "Manufacturers",
+                "url": "admin:brand_brand_changelist",
+                "icon": "fas fa-industry",
+                "permissions": ["brand.view_brand"],
+            },
+            {
+                "name": "Equipment Categories",
+                "url": "admin:equipment_type_equipmenttype_changelist",
+                "icon": "fas fa-cogs",
+                "permissions": ["equipment_type.view_equipmenttype"],
+            },
+        ],
+    },
+
+    # Sidebar order — clean 5-section layout
     "order_with_respect_to": [
         "users",
         "equipment",
         "booking",
+        "chat",
         "notifications",
-        "brand",
-        "equipment_type",
         "enquiry",
-        "auth",
     ],
 
     # Icons (Font Awesome)
     "icons": {
-        "auth": "fas fa-users-cog",
-        "auth.user": "fas fa-user",
-        "auth.Group": "fas fa-users",
         "users.User": "fas fa-user-circle",
         "equipment.Equipment": "fas fa-tractor",
         "equipment.EquipmentRating": "fas fa-star",
         "booking.Booking": "fas fa-calendar-check",
-        "brand.Brand": "fas fa-tags",
+        "brand.Brand": "fas fa-industry",
         "equipment_type.EquipmentType": "fas fa-cogs",
-        "enquiry.HelpCentre": "fas fa-question-circle",
+        "enquiry.HelpCentre": "fas fa-life-ring",
         "enquiry.FeedbackForm": "fas fa-comment-dots",
         "enquiry.PartnerDispute": "fas fa-exclamation-triangle",
-        "enquiry.CancelForm": "fas fa-times-circle",
+        "enquiry.CancelForm": "fas fa-ban",
         "enquiry.ReportEquipment": "fas fa-flag",
         "notifications.Notification": "fas fa-bell",
-        "account.EmailAddress": "fas fa-envelope",
+        "chat.Conversation": "fas fa-comments",
+        "chat.Message": "fas fa-comment",
     },
-    "default_icon_parents": "fas fa-folder",
-    "default_icon_children": "fas fa-circle",
+    "default_icon_parents": "fas fa-chevron-circle-right",
+    "default_icon_children": "fas fa-angle-right",
 
-    # Related Modal
-    "related_modal_active": True,
+    # Related Modal — off (causes issues with ASGI)
+    "related_modal_active": False,
 
-    # Custom CSS
+    # Custom CSS & JS
     "custom_css": "admin/css/admin_custom.css",
+    "custom_js": "admin/js/admin_custom.js",
 
-    # UI Customizer
+    # UI Customizer — hidden from non-devs
     "show_ui_builder": False,
 
-    # Change view
-    "changeform_format": "horizontal_tabs",
+    # ── Form Layout ──
+    # "single" = one column, simple. No confusing tabs.
+    # Only Equipment gets collapsible sections (it has many fields).
+    "changeform_format": "single",
     "changeform_format_overrides": {
+        "equipment.Equipment": "collapsible",
         "users.User": "collapsible",
-        "equipment.Equipment": "horizontal_tabs",
+        "booking.Booking": "collapsible",
     },
 }
 

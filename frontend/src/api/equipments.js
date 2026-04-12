@@ -16,7 +16,18 @@ export const getBrands = async () => {
     console.log("Error while calling getBrands API", error);
   }
 };
-// /api/brand/
+
+/**
+ * Get brands filtered by equipment type (for cascading dropdowns).
+ * @param {number} typeId - Equipment type ID
+ */
+export const getBrandsByType = async (typeId) => {
+  try {
+    return await instance.get(`/api/brand/?equipment_type=${typeId}`);
+  } catch (error) {
+    console.log("Error while calling getBrandsByType API", error);
+  }
+};
 
 export const getEquip = async (id) => {
   try {
@@ -158,43 +169,6 @@ export const deleteEquipment = async (id) => {
   }
 };
 
-// Booking api
-
-// export const getBookings = async () => {
-//     try {
-//         const headers = {
-//             "Content-Type": "application/json",
-//             Authorization: `"Bearer ${Cookies.get('access-token')}`
-//         };
-//         return await instance.get('/api/booking' , { headers });
-//     } catch(error) {
-//         console.log('Error while calling getBookings API', error);
-//     }
-// }
-
-// export const getBookingDetail = async (id) => {
-//     try {
-//         const headers = {
-//             "Content-Type": "application/json",
-//             Authorization: `"Bearer ${Cookies.get('access-token')}`
-//         };
-//         return await instance.get(`/api/booking/detail/${id}` , { headers });
-//     } catch(error) {
-//         console.log('Error while calling getBookingDetail API', error);
-//     }
-// }
-
-// export const updateBooking = async (data, id) => {
-//     try {
-//         const headers = {
-//             "Content-Type": "application/json",
-//             Authorization: `"Bearer ${Cookies.get('access-token')}`
-//         };
-//         return await instance.get(`/api/booking/update/${id}` , { data }, { headers });
-//     } catch(error) {
-//         console.log('Error while calling getBookingDetail API', error);
-//     }
-// }
 
 //  Feedback
 export const submitFeedback = async ({ name, phone_number, description }) => {

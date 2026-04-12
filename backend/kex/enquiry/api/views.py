@@ -33,7 +33,7 @@ class HelpCentreView(generics.CreateAPIView):
             response_payload(
                 success=True, data=help_centre, msg="Your Request Has been raised."
             ),
-            status=status.HTTP_200_OK,
+            status=status.HTTP_201_CREATED,
         )
 
 
@@ -54,7 +54,7 @@ class PartnerDisputeView(generics.CreateAPIView):
             response_payload(
                 success=True, data=partner_dispute, msg="Your Request Has been raised."
             ),
-            status=status.HTTP_200_OK,
+            status=status.HTTP_201_CREATED,
         )
 
 
@@ -76,7 +76,7 @@ class CancelFormView(generics.CreateAPIView):
             response_payload(
                 success=True, data=cancel_form, msg="Your Booking has been cancelled"
             ),
-            status=status.HTTP_200_OK,
+            status=status.HTTP_201_CREATED,
         )
 
 
@@ -97,7 +97,7 @@ class ReportEquipmentView(generics.CreateAPIView):
             response_payload(
                 success=True, data=report_equipment, msg="Your Request Has been raised."
             ),
-            status=status.HTTP_200_OK,
+            status=status.HTTP_201_CREATED,
         )
 
 
@@ -118,5 +118,5 @@ class FeedbackFormView(generics.CreateAPIView):
             response_payload(
                 success=True, data=feedback_form, msg="Thanks for the feedback."
             ),
-            status=status.HTTP_200_OK,
+            status=status.HTTP_201_CREATED,
         )

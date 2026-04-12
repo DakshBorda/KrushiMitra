@@ -58,38 +58,19 @@ class User(AbstractUser):
     state = models.CharField(_("State of User"), max_length=50, blank=True)
     pin_code = models.IntegerField(_("Pincode of User"), blank=True, null=True)
     profile_picture = models.ImageField(_("Image of User"), blank=True)
-    # phone_number = models.CharField(
-    #     _("Phone Number"), max_length=10, null=True, unique=True
-    # )
-    # secondary_phone_number = models.CharField(
-    #     _("Secondary Phone Number"), max_length=10, blank=True, null=True
-    # )
     phone_number = models.CharField(max_length=15, unique=True, blank=True, null=True)
-    # phone_number = serializers.CharField(
-    # required=True, validators=[validator_mobile_number]
-    # )
-
     secondary_phone_number = models.CharField(
-    max_length=10, blank=True, null=True
-     )
+        max_length=10, blank=True, null=True,
+    )
 
     is_verified = models.BooleanField(default=False)
 
     twilio_user_id = models.CharField(max_length=50, blank=True, null=True)
-    # twilio_user_id = models.CharField(max_length=9, blank=True, null=True)
 
     def tokens(self):
         refresh = RefreshToken.for_user(self)
         return {"refresh": str(refresh), "access": str(refresh.access_token)}
 
-    # def get_absolute_url(self):
-    #     """Get url for user's detail view.
-
-    #     Returns:
-    #         str: URL for user detail.
-
-    #     """
-    #     return reverse("users:detail", kwargs={"username": self.username})
 
     @property
     def is_profile_complete(self):

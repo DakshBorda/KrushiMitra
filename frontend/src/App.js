@@ -10,8 +10,7 @@ import {
   getSaveTokenAction
 } from "./redux/actions";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import SupportAdmin from "./components/ChatSupport/SupportAdmin/index";
-import SupportEngine from "./components/ChatSupport/SupportEngine/index";
+
 import Cookies from "js-cookie";
 
 //Pages
@@ -103,7 +102,7 @@ function App() {
         <Route path="/booking-history" element={<BookingHistory />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/partner-dispute" element={<PartnerDispute />} />
-        <Route path="/support" element={<SupportAdmin />} />
+
         <Route path="/policy" element={<CancellationPolicy />} />
         <Route path="/equipment-report/:id" element={<EquipmentReport />} />
         <Route path="/my-equipment" element={<MyEquipment />} />
@@ -113,7 +112,6 @@ function App() {
       </Routes>
 
       {!isAuthPage && <Footer />}
-      {!isAuthPage && <SupportEngine />}
     </>
   );
 }

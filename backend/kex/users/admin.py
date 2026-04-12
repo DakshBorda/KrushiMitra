@@ -20,22 +20,21 @@ class UserAdmin(auth_admin.UserAdmin):
     add_form = UserAdminCreationForm
     fieldsets = (
         (
-            None,
+            _("Profile"),
             {
                 "fields": (
                     "profile_picture",
-                    "username",
-                    "password",
+                    "email",
+                    "first_name",
+                    "last_name",
+                    "phone_number",
                     "is_verified",
-                )
+                ),
+                "description": "Basic profile information for this user.",
             },
         ),
         (
-            _("Personal info"),
-            {"fields": ("first_name", "last_name", "email", "phone_number")},
-        ),
-        (
-            _("Secondary info"),
+            _("Address"),
             {
                 "fields": (
                     "secondary_phone_number",
@@ -43,39 +42,69 @@ class UserAdmin(auth_admin.UserAdmin):
                     "city",
                     "state",
                     "pin_code",
-                )
+                ),
             },
         ),
         (
-            _("Permissions"),
+            _("Account Security"),
+            {
+                "fields": (
+                    "password",
+                ),
+                "classes": ("collapse",),
+                "description": "Click to change password. Current password is securely encrypted and cannot be viewed.",
+            },
+        ),
+        (
+            _("Admin Access"),
             {
                 "fields": (
                     "is_active",
                     "is_staff",
                     "is_superuser",
-                    "groups",
-                    "user_permissions",
                 ),
+                "classes": ("collapse",),
+                "description": "Control what this user can access. Only modify if you know what you are doing.",
             },
         ),
-        (_("Important dates"), {"fields": ("last_login", "date_joined")}),
+        (_("Important Dates"), {
+            "fields": ("last_login", "date_joined"),
+            "classes": ("collapse",),
+        }),
     )
+
+    # Fields shown when ADDING a new user (simplified)
+    add_fieldsets = (
+        (
+            _("New User"),
+            {
+                "classes": ("wide",),
+                "fields": ("email", "password1", "password2", "first_name", "last_name"),
+                "description": "Create a new user account. They can update their profile later.",
+            },
+        ),
+    )
+
     list_display = [
         "email",
         "first_name",
         "last_name",
         "phone_number",
-        "is_verified",
-        "is_active",
+        "role_badge",
+        "is_verified_badge",
+        "is_active_badge",
         "equipment_count",
         "booking_count",
         "date_joined",
     ]
-    list_filter = ["is_verified", "is_active", "is_staff", "is_superuser", "date_joined"]
-    search_fields = ["first_name", "last_name", "email", "phone_number", "user_id"]
+    list_filter = ["is_verified", "is_active", "is_staff", "date_joined"]
+    search_fields = ["first_name", "last_name", "email", "phone_number"]
     list_per_page = 25
     date_hierarchy = "date_joined"
     ordering = ["-date_joined"]
+
+    # Hide the username field from the change form entirely
+    exclude = ("username",)
 
     def get_queryset(self, request):
         """Annotate equipment and booking counts to avoid N+1 queries."""
@@ -85,6 +114,54 @@ class UserAdmin(auth_admin.UserAdmin):
             _booking_count=Count("bookings_as_customer", distinct=True),
         )
         return qs
+
+    def get_actions(self, request):
+        """Remove the default 'Delete selected' action — too dangerous for users."""
+        actions = super().get_actions(request)
+        if "delete_selected" in actions:
+            del actions["delete_selected"]
+        return actions
+
+    def role_badge(self, obj):
+        """Show whether the user is an Admin or a regular User."""
+        if obj.is_superuser:
+            return format_html(
+                '<span style="background:#dc2626; color:white; padding:3px 10px; '
+                'border-radius:12px; font-size:11px; font-weight:700;">Super Admin</span>'
+            )
+        if obj.is_staff:
+            return format_html(
+                '<span style="background:#f59e0b; color:white; padding:3px 10px; '
+                'border-radius:12px; font-size:11px; font-weight:700;">Staff</span>'
+            )
+        return format_html(
+            '<span style="background:#3b82f6; color:white; padding:3px 10px; '
+            'border-radius:12px; font-size:11px; font-weight:700;">User</span>'
+        )
+    role_badge.short_description = "Role"
+    role_badge.admin_order_field = "is_staff"
+
+    def is_verified_badge(self, obj):
+        if obj.is_verified:
+            return format_html(
+                '<span style="color:#22c55e; font-weight:600;">Verified</span>'
+            )
+        return format_html(
+            '<span style="color:#ef4444; font-weight:600;">Unverified</span>'
+        )
+    is_verified_badge.short_description = "Verified"
+    is_verified_badge.admin_order_field = "is_verified"
+
+    def is_active_badge(self, obj):
+        if obj.is_active:
+            return format_html(
+                '<span style="color:#22c55e; font-weight:600;">Active</span>'
+            )
+        return format_html(
+            '<span style="color:#ef4444; font-weight:600;">Blocked</span>'
+        )
+    is_active_badge.short_description = "Status"
+    is_active_badge.admin_order_field = "is_active"
 
     def equipment_count(self, obj):
         count = obj._equipment_count
@@ -110,40 +187,45 @@ class UserAdmin(auth_admin.UserAdmin):
     booking_count.short_description = "Bookings"
     booking_count.admin_order_field = "_booking_count"
 
-    # ── Bulk Actions ──
+    # Bulk Actions — clean text, no emojis
     actions = ["deactivate_users", "activate_users", "verify_users", "export_users_csv"]
 
-    @admin.action(description="Deactivate selected users")
+    @admin.action(description="Block selected users")
     def deactivate_users(self, request, queryset):
-        # Safety: never deactivate superusers
         count = queryset.exclude(is_superuser=True).update(is_active=False)
-        self.message_user(request, f"Deactivated {count} user(s). Superusers were skipped.")
+        self.message_user(request, "Blocked {} user(s). Superusers were skipped.".format(count))
 
     @admin.action(description="Activate selected users")
     def activate_users(self, request, queryset):
         count = queryset.update(is_active=True)
-        self.message_user(request, f"Activated {count} user(s).")
+        self.message_user(request, "Activated {} user(s).".format(count))
 
-    @admin.action(description="Mark selected users as verified")
+    @admin.action(description="Mark selected as Verified")
     def verify_users(self, request, queryset):
         count = queryset.update(is_verified=True)
-        self.message_user(request, f"Verified {count} user(s).")
+        self.message_user(request, "Verified {} user(s).".format(count))
 
-    @admin.action(description="Export selected users to CSV")
+    @admin.action(description="Download selected as CSV")
     def export_users_csv(self, request, queryset):
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = 'attachment; filename="krushimitra_users.csv"'
         writer = csv.writer(response)
-        writer.writerow(["Email", "First Name", "Last Name", "Phone", "Verified", "Active", "Joined"])
+        writer.writerow(["Email", "First Name", "Last Name", "Phone", "Role", "Verified", "Active", "Joined"])
         for user in queryset:
+            role = "Super Admin" if user.is_superuser else ("Staff" if user.is_staff else "User")
             writer.writerow([
                 user.email, user.first_name, user.last_name,
-                user.phone_number, user.is_verified, user.is_active,
+                user.phone_number, role, user.is_verified, user.is_active,
                 user.date_joined.strftime("%Y-%m-%d"),
             ])
         return response
 
+    def has_delete_permission(self, request, obj=None):
+        """Only superusers can delete users."""
+        return request.user.is_superuser
 
+
+# PasswordResetOTP is hidden from sidebar via hide_models
 @admin.register(PasswordResetOTP)
 class PasswordResetOTPAdmin(admin.ModelAdmin):
     list_display = ["user", "otp", "is_used", "attempts", "created_at", "expires_at"]
@@ -152,11 +234,4 @@ class PasswordResetOTPAdmin(admin.ModelAdmin):
     readonly_fields = ["user", "otp", "created_at", "expires_at"]
     list_per_page = 30
     ordering = ["-created_at"]
-
-    actions = ["cleanup_expired_otps"]
-
-    @admin.action(description="Remove expired OTPs (older than 24 hours)")
-    def cleanup_expired_otps(self, request, queryset):
-        PasswordResetOTP.cleanup_expired()
-        self.message_user(request, "Expired OTPs have been cleaned up.")
-
+    actions = None

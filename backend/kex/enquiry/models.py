@@ -1,11 +1,19 @@
 # Django imports
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from kex.equipment.models import Equipment
 
-from kex.users.admin import User
+from kex.users.models import User
 
-# Third party imports
+
+# ── Status choices for support tickets ──
+TICKET_STATUS = (
+    ("new", "New"),
+    ("in_progress", "In Progress"),
+    ("resolved", "Resolved"),
+    ("closed", "Closed"),
+)
 
 
 class HelpCentre(models.Model):
@@ -17,10 +25,15 @@ class HelpCentre(models.Model):
     )
     title = models.CharField(_("Title"), max_length=50, blank=True)
     reason = models.TextField(_("Enquiry Reason"), blank=False)
+    status = models.CharField(
+        _("Status"), max_length=20, choices=TICKET_STATUS, default="new",
+    )
+    created_at = models.DateTimeField(_("Submitted At"), default=timezone.now)
 
     class Meta:
         verbose_name = "Help Desk Enquiry"
         verbose_name_plural = "Help Desk Enquiries"
+        ordering = ["-created_at"]
 
     def __str__(self):
         return str(self.name)
@@ -42,10 +55,15 @@ class PartnerDispute(models.Model):
     )
     topic = models.PositiveIntegerField(choices=TOPIC)
     description = models.TextField(_("Description"), blank=False)
+    status = models.CharField(
+        _("Status"), max_length=20, choices=TICKET_STATUS, default="new",
+    )
+    created_at = models.DateTimeField(_("Submitted At"), default=timezone.now)
 
     class Meta:
         verbose_name = "Partner Dispute"
         verbose_name_plural = "Partner Disputes"
+        ordering = ["-created_at"]
 
     def __str__(self):
         return str(self.name)
@@ -61,10 +79,12 @@ class CancelForm(models.Model):
     )
     cancel_reason = models.PositiveIntegerField(choices=CANCEL_REASON)
     description = models.TextField(_("Description"), blank=True)
-    
+    created_at = models.DateTimeField(_("Submitted At"), default=timezone.now)
+
     class Meta:
         verbose_name = "Cancellation Request"
         verbose_name_plural = "Cancellation Requests"
+        ordering = ["-created_at"]
 
     def __str__(self):
         return str(self.booking_id)
@@ -81,9 +101,12 @@ class ReportEquipment(models.Model):
     )
     report_reason = models.PositiveIntegerField(choices=REPORT_REASON)
     description = models.TextField(_("Description"), blank=True)
+    created_at = models.DateTimeField(_("Submitted At"), default=timezone.now)
+
     class Meta:
         verbose_name = "Equipment Report"
         verbose_name_plural = "Equipment Reports"
+        ordering = ["-created_at"]
 
     def __str__(self):
         return str(self.user.first_name)
@@ -96,10 +119,12 @@ class FeedbackForm(models.Model):
         max_length=10,
     )
     description = models.TextField(_("Description"), blank=False)
+    created_at = models.DateTimeField(_("Submitted At"), default=timezone.now)
 
     class Meta:
         verbose_name = "User Feedback"
         verbose_name_plural = "User Feedback"
+        ordering = ["-created_at"]
 
     def __str__(self):
         return str(self.name)

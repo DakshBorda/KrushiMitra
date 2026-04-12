@@ -10,7 +10,7 @@ from kex.booking.api.views import (
     BlockedDatesView,
 )
 
-app_name = "brand"
+app_name = "booking"
 
 urlpatterns = [
     path("", BookingListAPIView.as_view(), name="booking-list"),
