@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import {
@@ -6,6 +6,7 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
 } from "../../api/notificationAPI";
+import usePolling from "../../utils/usePolling";
 import "./Notifications.css";
 
 // ── Notification type → icon + color mapping (no emoji) ──
@@ -35,8 +36,7 @@ const Notifications = () => {
     fetchNotifications();
   }, [navigate]);
 
-  const fetchNotifications = async () => {
-    setLoading(true);
+  const fetchNotifications = useCallback(async () => {
     try {
       const res = await getNotifications();
       if (res?.data?.results) {
@@ -49,7 +49,10 @@ const Notifications = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Poll every 15s with visibility API (pauses when tab hidden, instant on tab focus)
+  usePolling(fetchNotifications, 15000, !!Cookies.get("access-token"));
 
   const handleNotifClick = async (notif) => {
     if (!notif.is_read) {

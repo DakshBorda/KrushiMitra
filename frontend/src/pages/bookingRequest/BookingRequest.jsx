@@ -9,6 +9,7 @@ import {
     STATUS_CONFIG, TERMINAL_STATUSES, REJECTION_REASONS,
     OWNER_CANCEL_REASONS, STATUS_SUCCESS_MESSAGES,
 } from '../../utils/bookingConstants';
+import usePolling from '../../utils/usePolling';
 
 // Clean stepper config — numbered steps, no emoji
 const STEP_LABELS = ['Request Sent', 'Confirmed', 'In Progress', 'Completed'];
@@ -73,6 +74,19 @@ const BookingRequest = () => {
     const isCustomer = currentUserId != null && booking?.customer?.id != null && String(currentUserId) === String(booking.customer.id);
     const statusCfg = STATUS_CONFIG[booking?.status] || { label: booking?.status, color: '#999', bg: '#f3f4f6', icon: 'fa-circle-question' };
     const isTerminal = booking && TERMINAL_STATUSES.includes(booking.status);
+
+    // Poll booking status every 15s for active (non-terminal) bookings
+    // This catches when the other party accepts/rejects/starts/completes
+    const refreshBooking = useCallback(async () => {
+        if (!params.id) return;
+        try {
+            const res = await getBookingDetail(params.id);
+            if (res?.data) setBooking(res.data);
+        } catch (err) {
+            // Silent fail — will retry next interval
+        }
+    }, [params.id]);
+    usePolling(refreshBooking, 15000, !!params.id && !isTerminal);
 
     // ── Smart Date Flags (drive UI state) ──
     const todayStr = new Date().toISOString().slice(0, 10);

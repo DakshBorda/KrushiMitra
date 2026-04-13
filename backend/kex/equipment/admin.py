@@ -9,17 +9,14 @@ class EquipmentAdmin(admin.ModelAdmin):
         "eq_id",
         "title",
         "owner_name",
-        "manufacturer",
         "equipment_type",
-        "condition",
         "daily_rental_display",
-        "is_available",
+        "availability_badge",
         "image_preview",
         "created_at",
     ]
     list_filter = ["manufacturer", "equipment_type", "condition", "is_available"]
     search_fields = ["title", "eq_id", "owner__first_name", "owner__last_name", "description", "equipment_location"]
-    list_editable = ["is_available"]
     list_per_page = 20
     readonly_fields = ["eq_id", "created_at", "image_preview_large"]
     ordering = ["-created_at"]
@@ -84,6 +81,19 @@ class EquipmentAdmin(admin.ModelAdmin):
     daily_rental_display.short_description = "Daily Rate"
     daily_rental_display.admin_order_field = "daily_rental"
 
+    def availability_badge(self, obj):
+        if obj.is_available:
+            return format_html(
+                '<span style="background:#22c55e; color:white; padding:3px 10px; '
+                'border-radius:12px; font-size:11px; font-weight:700;">Available</span>'
+            )
+        return format_html(
+            '<span style="background:#ef4444; color:white; padding:3px 10px; '
+            'border-radius:12px; font-size:11px; font-weight:700;">Unavailable</span>'
+        )
+    availability_badge.short_description = "Status"
+    availability_badge.admin_order_field = "is_available"
+
     def image_preview(self, obj):
         if obj.image_1:
             return format_html(
@@ -113,7 +123,7 @@ class EquipmentAdmin(admin.ModelAdmin):
 
 @admin.register(EquipmentRating)
 class EquipmentRatingAdmin(admin.ModelAdmin):
-    list_display = ["user_name", "equipment", "rating_display", "rating"]
+    list_display = ["user_name", "equipment", "rating_display", "created_at"]
     list_filter = ["rating"]
     search_fields = ["user__first_name", "user__last_name", "equipment__title"]
     list_per_page = 20

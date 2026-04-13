@@ -1,9 +1,8 @@
-import React, { useState, useRef } from 'react';
-import emailjs from '@emailjs/browser';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import apiServer from '../../api/config';
 
 const ContactUs = () => {
-  const formRef = useRef();
   const navigate = useNavigate();
   const [done, setDone] = useState(false);
   const [sending, setSending] = useState(false);
@@ -13,28 +12,71 @@ const ContactUs = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
 
-  const handleSubmit = (e) => {
+  // ── Client-side validation ──
+  const validate = () => {
+    const errs = {};
+    if (!name.trim()) errs.name = "Name is required";
+    else if (name.trim().length < 2) errs.name = "Name must be at least 2 characters";
+
+    if (!phone.trim()) errs.phone = "Phone number is required";
+    else if (!/^\d{10}$/.test(phone.trim())) errs.phone = "Enter a valid 10-digit phone number";
+
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) errs.email = "Enter a valid email address";
+
+    if (!message.trim()) errs.message = "Message is required";
+    else if (message.trim().length < 10) errs.message = "Message must be at least 10 characters";
+
+    setFieldErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const clearError = (field) => {
+    setFieldErrors(prev => ({ ...prev, [field]: "" }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (sending) return;
     setError('');
+
+    if (!validate()) return;
+
     setSending(true);
 
-    emailjs.sendForm(
-      process.env.REACT_APP_SERVICE_ID,
-      process.env.REACT_APP_TEMPLATE_ID,
-      formRef.current,
-      process.env.REACT_APP_USER_ID
-    ).then(() => {
+    try {
+      await apiServer.post('/enquiry/help-centre', {
+        name: name.trim(),
+        email: email.trim() || null,
+        phone_number: phone.trim(),
+        title: subject.trim() || 'Contact Form Enquiry',
+        reason: message.trim(),
+      });
       setDone(true);
+      setFieldErrors({});
       setName(''); setEmail(''); setMessage(''); setSubject(''); setPhone('');
-      setSending(false);
       setTimeout(() => setDone(false), 5000);
-    }, (err) => {
-      console.log(err.text);
-      setError('Failed to send message. Please try again or email us directly.');
+    } catch (err) {
+      console.log('Contact form error:', err);
+      const errData = err?.response?.data;
+      if (errData && typeof errData === 'object') {
+        const backendErrors = {};
+        Object.entries(errData).forEach(([key, val]) => {
+          backendErrors[key] = Array.isArray(val) ? val[0] : String(val);
+        });
+        if (Object.keys(backendErrors).length > 0) {
+          setFieldErrors(backendErrors);
+          setError("Please fix the errors below.");
+        } else {
+          setError('Failed to send message. Please try again.');
+        }
+      } else {
+        setError('Failed to send message. Please try again or email us directly.');
+      }
+    } finally {
       setSending(false);
-    });
+    }
   };
 
   return (
@@ -267,27 +309,29 @@ const ContactUs = () => {
               </div>
             )}
 
-            <form ref={formRef} onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
                 {/* Name */}
                 <div>
                   <label style={labelStyle}>Name <span style={{ color: '#ef4444' }}>*</span></label>
                   <input
-                    onChange={(e) => setName(e.target.value)} value={name}
-                    style={inputStyle} id="contact-name"
-                    required type="text" name="user_name"
+                    onChange={(e) => { setName(e.target.value); clearError('name'); }} value={name}
+                    style={{ ...inputStyle, borderColor: fieldErrors.name ? '#ef4444' : '#e5e7eb' }} id="contact-name"
+                    type="text"
                     placeholder="Your full name"
                   />
+                  {fieldErrors.name && <span style={errorStyle}>{fieldErrors.name}</span>}
                 </div>
                 {/* Email */}
                 <div>
                   <label style={labelStyle}>Email</label>
                   <input
-                    onChange={(e) => setEmail(e.target.value)} value={email}
-                    style={inputStyle} id="contact-email"
-                    type="email" name="user_email"
+                    onChange={(e) => { setEmail(e.target.value); clearError('email'); }} value={email}
+                    style={{ ...inputStyle, borderColor: fieldErrors.email ? '#ef4444' : '#e5e7eb' }} id="contact-email"
+                    type="email"
                     placeholder="your@email.com"
                   />
+                  {fieldErrors.email && <span style={errorStyle}>{fieldErrors.email}</span>}
                 </div>
               </div>
 
@@ -296,11 +340,13 @@ const ContactUs = () => {
                 <div>
                   <label style={labelStyle}>Mobile No. <span style={{ color: '#ef4444' }}>*</span></label>
                   <input
-                    onChange={(e) => setPhone(e.target.value)} value={phone}
-                    style={inputStyle} id="contact-phone"
-                    required type="text" name="user_phone"
+                    onChange={(e) => { setPhone(e.target.value); clearError('phone'); }} value={phone}
+                    style={{ ...inputStyle, borderColor: fieldErrors.phone ? '#ef4444' : '#e5e7eb' }} id="contact-phone"
+                    type="text"
                     placeholder="10-digit mobile number"
+                    maxLength={10}
                   />
+                  {fieldErrors.phone && <span style={errorStyle}>{fieldErrors.phone}</span>}
                 </div>
                 {/* Subject */}
                 <div>
@@ -308,7 +354,7 @@ const ContactUs = () => {
                   <input
                     onChange={(e) => setSubject(e.target.value)} value={subject}
                     style={inputStyle} id="contact-subject"
-                    type="text" name="subject"
+                    type="text"
                     placeholder="What's this about?"
                   />
                 </div>
@@ -318,20 +364,20 @@ const ContactUs = () => {
               <div style={{ marginBottom: '20px' }}>
                 <label style={labelStyle}>Message <span style={{ color: '#ef4444' }}>*</span></label>
                 <textarea
-                  onChange={(e) => setMessage(e.target.value)}
+                  onChange={(e) => { setMessage(e.target.value); clearError('message'); }}
                   value={message}
                   rows={5}
-                  name="message"
                   id="contact-message"
-                  required
                   autoComplete="off"
                   placeholder="Describe your question or issue in detail..."
                   style={{
                     ...inputStyle,
                     resize: 'vertical',
                     minHeight: '120px',
+                    borderColor: fieldErrors.message ? '#ef4444' : '#e5e7eb',
                   }}
                 />
+                {fieldErrors.message && <span style={errorStyle}>{fieldErrors.message}</span>}
               </div>
 
               {/* Submit */}
@@ -394,6 +440,14 @@ const inputStyle = {
   boxSizing: 'border-box',
   background: '#fff',
   transition: 'border-color 0.2s ease',
+};
+
+const errorStyle = {
+  display: 'block',
+  fontSize: '12px',
+  color: '#ef4444',
+  fontWeight: 600,
+  marginTop: '4px',
 };
 
 export default ContactUs;

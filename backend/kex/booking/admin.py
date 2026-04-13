@@ -111,8 +111,8 @@ class BookingAdmin(admin.ModelAdmin):
     }
     STATUS_LABELS = {
         "Pending": "Pending",
-        "Accepted": "Confirmed",
-        "Rejected": "Declined",
+        "Accepted": "Accepted",
+        "Rejected": "Rejected",
         "AutoRejected": "Auto-Declined",
         "Cancelled": "Cancelled",
         "CancelledByOwner": "Owner Cancelled",

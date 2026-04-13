@@ -341,21 +341,47 @@ class EquipmentCreateSerializer(ModelSerializer):
         return data
 
 
+class EquipmentRatingReadSerializer(ModelSerializer):
+    """Read-only serializer — used for listing reviews on equipment detail page."""
+    user_name = SerializerMethodField()
+
+    class Meta:
+        model = EquipmentRating
+        fields = ["id", "user", "user_name", "equipment", "rating", "review", "created_at"]
+        read_only_fields = ["__all__"]
+
+    def get_user_name(self, obj):
+        return f"{obj.user.first_name} {obj.user.last_name}".strip() or "Anonymous"
+
+
 class EquipmentRatingSerializer(ModelSerializer):
     class Meta:
         model = EquipmentRating
-        fields = "__all__"
-        read_only_fields = ["user"]
+        fields = ["id", "user", "equipment", "rating", "review", "created_at"]
+        read_only_fields = ["user", "created_at"]
+
+    def validate_review(self, value):
+        if value and len(value.strip()) > 500:
+            raise ValidationError("Review must be 500 characters or fewer.")
+        return value.strip() if value else ""
 
     def validate_equipment(self, equipment):
+        user = self.context["user"]
         # Business Rule: Cannot rate your own equipment
-        if equipment.owner == self.context["user"]:
+        if equipment.owner == user:
             raise ValidationError("You cannot rate your own equipment.")
 
+        # Business Rule: Must have at least one Completed booking
         if not Booking.objects.filter(
-            customer=self.context["user"], status="Completed", equipment=equipment
+            customer=user, status="Completed", equipment=equipment
         ).exists():
-            raise ValidationError("No Booking with this Equipment")
+            raise ValidationError(
+                "You can only review equipment after completing a booking."
+            )
+
+        # Business Rule: One review per user per equipment
+        if EquipmentRating.objects.filter(user=user, equipment=equipment).exists():
+            raise ValidationError("You have already reviewed this equipment.")
 
         return equipment
 

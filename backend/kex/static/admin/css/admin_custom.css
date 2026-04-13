@@ -665,3 +665,66 @@ td img[src*="icon-unknown"] {
     }
 }
 
+/* ═══════════════════════════════════════════
+   Recent Actions — fix garbled text
+   DOM: .timeline-item > span.time (float:right)
+                          > h3.timeline-header > a
+   The .time sibling floats right and squeezes
+   the h3 into 10-20px. Fix: clear the float.
+   ═══════════════════════════════════════════ */
+
+/* The .time is a sibling that floats right — move it below */
+.timeline-item > .time {
+    float: none !important;
+    display: block !important;
+    font-size: 11px !important;
+    color: #9ca3af !important;
+    margin-bottom: 2px !important;
+}
+
+/* h3.timeline-header now gets full width since .time isn't stealing it */
+h3.timeline-header,
+.timeline-header {
+    clear: both !important;
+    width: 100% !important;
+}
+
+.timeline-header a,
+.timeline-header > a {
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    line-height: 1.4 !important;
+    display: inline !important;
+}
+
+/* Fix the timeline body text */
+.timeline-body {
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    white-space: normal !important;
+    line-height: 1.4 !important;
+    clear: both !important;
+}
+
+/* Fallback for non-Jazzmin recent actions (standard Django) */
+.actionlist .object-repr,
+.actionlist li,
+.actionlist a {
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+    line-height: 1.4;
+}
+
+.actionlist li {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--km-border);
+}
+
+/* Table columns — enforce a minimum width to prevent extreme cramping */
+.table thead th {
+    white-space: nowrap;
+    min-width: 70px;
+}
+

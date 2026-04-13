@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { getMyEquipments, updateEquipment, deleteEquipment } from "../../api/equipments";
 import item1 from "../../img/item1.png";
+import usePolling from "../../utils/usePolling";
 import "./MyEquipment.css";
 
 const MyEquipment = () => {
@@ -32,11 +33,10 @@ const MyEquipment = () => {
     }
   }, [toast]);
 
-  async function fetchEquipments() {
+  // Wrap fetchEquipments in useCallback for polling
+  const fetchEquipments = useCallback(async function fetchEquipments() {
     try {
-      setLoading(true);
       const res = await getMyEquipments();
-      // Handle all possible response shapes from backend
       const d = res?.data;
       let items = [];
       if (Array.isArray(d)) {
@@ -52,7 +52,10 @@ const MyEquipment = () => {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  // Poll every 30s with visibility API (pauses when tab hidden)
+  usePolling(fetchEquipments, 30000, !!Cookies.get("access-token"));
 
   // ── Stats ──
   const totalCount = equipments.length;

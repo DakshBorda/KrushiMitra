@@ -201,7 +201,56 @@ class EquipmentRatingView(CreateAPIView):
             response_payload(
                 success=True,
                 data=EquipmentRatingSerializer(equipment_rating).data,
-                msg="Thanks for the Rating",
+                msg="Thanks for your review!",
             ),
             status=status.HTTP_200_OK,
         )
+
+
+class EquipmentReviewListView(APIView):
+    """
+    GET /api/equipment/reviews/?equipment_id=<id>
+    Returns all reviews for an equipment plus average rating and review eligibility.
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from kex.equipment.api.serializers import EquipmentRatingReadSerializer
+        from django.db.models import Avg
+
+        equipment_id = request.query_params.get("equipment_id")
+        if not equipment_id:
+            return Response(
+                {"error": "equipment_id is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        reviews = EquipmentRating.objects.filter(equipment_id=equipment_id).select_related("user")
+        serialized = EquipmentRatingReadSerializer(reviews, many=True).data
+
+        avg = reviews.aggregate(avg_rating=Avg("rating"))["avg_rating"]
+        avg_rating = round(avg, 1) if avg else 0
+
+        # Check if current user can review
+        can_review = False
+        has_reviewed = False
+        if request.user and request.user.is_authenticated:
+            has_reviewed = reviews.filter(user=request.user).exists()
+            if not has_reviewed:
+                has_completed_booking = Booking.objects.filter(
+                    customer=request.user, equipment_id=equipment_id, status="Completed"
+                ).exists()
+                # Also check they don't own the equipment
+                try:
+                    eq = Equipment.objects.get(id=equipment_id)
+                    is_owner = eq.owner == request.user
+                except Equipment.DoesNotExist:
+                    is_owner = True
+                can_review = has_completed_booking and not is_owner
+
+        return Response({
+            "reviews": serialized,
+            "average_rating": avg_rating,
+            "total_reviews": reviews.count(),
+            "can_review": can_review,
+            "has_reviewed": has_reviewed,
+        })

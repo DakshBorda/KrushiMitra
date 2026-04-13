@@ -63,10 +63,12 @@ class Equipment(models.Model):
 
 class EquipmentRating(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE)
+    equipment = models.ForeignKey(Equipment, on_delete=models.CASCADE, related_name="ratings")
     rating = models.IntegerField(
         validators=[MaxValueValidator(5), MinValueValidator(1)], blank=True
     )
+    review = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.user.first_name} - {self.equipment.title} : {self.rating}"
@@ -75,3 +77,4 @@ class EquipmentRating(models.Model):
         unique_together = ("user", "equipment")
         verbose_name = "Rating & Review"
         verbose_name_plural = "Ratings & Reviews"
+        ordering = ["-created_at"]

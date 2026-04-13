@@ -4,6 +4,7 @@ from kex.equipment.api.views import (
     EquipmentListAPIView,
     EquipmentCreateAPIView,
     EquipmentRatingView,
+    EquipmentReviewListView,
     EquipmentUpdateAPIView,
     EquipmentDeleteAPIView,
     EquipmentDetailAPIView,
@@ -19,5 +20,6 @@ urlpatterns = [
     path("update/<int:id>/", EquipmentUpdateAPIView.as_view(), name="equipment-update"),
     path("delete/<int:id>/", EquipmentDeleteAPIView.as_view(), name="equipment-delete"),
     path("rating/", EquipmentRatingView.as_view(), name="equipment-rating"),
+    path("reviews/", EquipmentReviewListView.as_view(), name="equipment-reviews"),
     path("my/", MyEquipmentListAPIView.as_view(), name="my-equipment"),
 ]

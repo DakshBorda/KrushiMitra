@@ -6,6 +6,7 @@ import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
 import { DateRangePicker } from 'react-date-range';
 import { getEquip } from '../../api/equipments';
+import apiServer from '../../api/config';
 import { createBooking, getOwnerStats, getBlockedDates } from '../../api/bookingAPI';
 import { useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -26,6 +27,14 @@ const Product = () => {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [bookingSuccess, setBookingSuccess] = useState(false);
     const [bookingInProgress, setBookingInProgress] = useState(false);
+    // Reviews & Rating state
+    const [reviewData, setReviewData] = useState({ reviews: [], average_rating: 0, total_reviews: 0, can_review: false, has_reviewed: false });
+    const [userRating, setUserRating] = useState(0);
+    const [hoverRating, setHoverRating] = useState(0);
+    const [reviewText, setReviewText] = useState('');
+    const [ratingSubmitted, setRatingSubmitted] = useState(false);
+    const [ratingError, setRatingError] = useState('');
+    const [ratingLoading, setRatingLoading] = useState(false);
     const params = useParams();
     const navigate = useNavigate();
     const authState = useSelector((state) => state.authReducer);
@@ -51,6 +60,24 @@ const Product = () => {
         }
         if (equipment?.id) fetchBlockedDates();
     }, [equipment?.owner?.id, equipment?.id]);
+
+    // Fetch reviews & eligibility for this equipment
+    const fetchReviews = async () => {
+        if (!equipment?.id) return;
+        try {
+            const headers = Cookies.get('access-token')
+                ? { Authorization: `Bearer ${Cookies.get('access-token')}` }
+                : {};
+            const res = await apiServer.get(`/api/equipment/reviews/?equipment_id=${equipment.id}`, { headers });
+            setReviewData(res.data);
+        } catch (err) {
+            console.error('Error loading reviews:', err);
+        }
+    };
+
+    useEffect(() => {
+        fetchReviews();
+    }, [equipment?.id]);
 
     const handleSelect = (ranges) => {
         setStartDate(ranges.selection.startDate);
@@ -349,6 +376,244 @@ const Product = () => {
                                 </div>
                             )}
                         </div>
+                    </div>
+
+                    {/* ══════════════════════════════════════════════ */}
+                    {/*  RATINGS & REVIEWS SECTION                    */}
+                    {/* ══════════════════════════════════════════════ */}
+                    <div className="pd-section">
+                        <h2 className="pd-section-title">
+                            <i className="fa-solid fa-star"></i> Ratings & Reviews
+                        </h2>
+
+                        {/* Average rating header */}
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '16px',
+                            background: '#fafbfa', borderRadius: '12px',
+                            padding: '16px 20px', border: '1px solid #e5e7eb',
+                            marginBottom: '16px',
+                        }}>
+                            <div style={{ textAlign: 'center', minWidth: '70px' }}>
+                                <div style={{ fontSize: '32px', fontWeight: 800, color: '#1f2937', lineHeight: 1 }}>
+                                    {reviewData.average_rating || '—'}
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'center', gap: '2px', margin: '4px 0' }}>
+                                    {[1,2,3,4,5].map(s => (
+                                        <i key={s} className="fa-solid fa-star" style={{
+                                            fontSize: '12px',
+                                            color: s <= Math.round(reviewData.average_rating) ? '#f59e0b' : '#e5e7eb',
+                                        }}></i>
+                                    ))}
+                                </div>
+                                <div style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 600 }}>
+                                    {reviewData.total_reviews} review{reviewData.total_reviews !== 1 ? 's' : ''}
+                                </div>
+                            </div>
+                            <div style={{ borderLeft: '1px solid #e5e7eb', paddingLeft: '16px', flex: 1 }}>
+                                <p style={{ fontSize: '13px', color: '#6b7280', margin: 0 }}>
+                                    {reviewData.total_reviews === 0
+                                        ? 'No reviews yet. Be the first to share your experience!'
+                                        : reviewData.average_rating >= 4
+                                            ? 'This equipment is highly rated by previous renters.'
+                                            : 'See what other farmers have to say about this equipment.'}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Write a Review — only for eligible users */}
+                        {reviewData.can_review && !ratingSubmitted && (
+                            <div style={{
+                                background: '#fffbeb', borderRadius: '12px',
+                                padding: '20px 24px', border: '1px solid #fde68a',
+                                marginBottom: '16px',
+                            }}>
+                                <p style={{ fontSize: '14px', fontWeight: 700, color: '#92400e', margin: '0 0 12px 0' }}>
+                                    <i className="fa-solid fa-pen" style={{ marginRight: '8px' }}></i>
+                                    Write a Review
+                                </p>
+                                <p style={{ fontSize: '12px', color: '#a16207', margin: '0 0 12px 0' }}>
+                                    You've completed a booking for this equipment. Share your experience!
+                                </p>
+
+                                {/* Star picker */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '12px' }}>
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <button
+                                            key={star} type="button"
+                                            onClick={() => setUserRating(star)}
+                                            onMouseEnter={() => setHoverRating(star)}
+                                            onMouseLeave={() => setHoverRating(0)}
+                                            style={{
+                                                background: 'none', border: 'none', cursor: 'pointer',
+                                                fontSize: '26px', padding: '2px',
+                                                color: star <= (hoverRating || userRating) ? '#f59e0b' : '#d1d5db',
+                                                transition: 'color 0.15s, transform 0.15s',
+                                                transform: star <= (hoverRating || userRating) ? 'scale(1.15)' : 'scale(1)',
+                                            }}
+                                        >
+                                            <i className="fa-solid fa-star"></i>
+                                        </button>
+                                    ))}
+                                    {(hoverRating || userRating) > 0 && (
+                                        <span style={{ marginLeft: '10px', fontSize: '13px', color: '#f59e0b', fontWeight: 600 }}>
+                                            {['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent'][hoverRating || userRating]}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Review text */}
+                                <textarea
+                                    value={reviewText}
+                                    onChange={(e) => setReviewText(e.target.value)}
+                                    placeholder="How was the equipment? Was it in good condition? Easy to use? Share details to help other farmers…"
+                                    maxLength={500}
+                                    rows={3}
+                                    style={{
+                                        width: '100%', padding: '10px 14px', borderRadius: '10px',
+                                        border: '2px solid #e5e7eb', fontSize: '13px', fontWeight: 500,
+                                        color: '#1f2937', outline: 'none', boxSizing: 'border-box',
+                                        resize: 'vertical', minHeight: '80px',
+                                        transition: 'border-color 0.2s',
+                                    }}
+                                />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+                                    <span style={{ fontSize: '11px', color: reviewText.length > 450 ? '#ef4444' : '#9ca3af' }}>
+                                        {reviewText.length}/500 characters
+                                    </span>
+                                    {reviewText.trim().length > 0 && reviewText.trim().length < 10 && (
+                                        <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: 600 }}>
+                                            Minimum 10 characters
+                                        </span>
+                                    )}
+                                </div>
+
+                                {ratingError && (
+                                    <p style={{ fontSize: '12px', color: '#ef4444', fontWeight: 600, margin: '8px 0 0 0' }}>
+                                        {ratingError}
+                                    </p>
+                                )}
+
+                                <button
+                                    disabled={!userRating || ratingLoading || (reviewText.trim().length > 0 && reviewText.trim().length < 10)}
+                                    onClick={async () => {
+                                        setRatingError('');
+                                        if (!userRating) { setRatingError('Please select a star rating.'); return; }
+                                        if (reviewText.trim().length > 0 && reviewText.trim().length < 10) {
+                                            setRatingError('Review must be at least 10 characters.');
+                                            return;
+                                        }
+                                        setRatingLoading(true);
+                                        try {
+                                            await apiServer.post('/api/equipment/rating/', {
+                                                equipment: equipment.id,
+                                                rating: userRating,
+                                                review: reviewText.trim(),
+                                            }, {
+                                                headers: { Authorization: `Bearer ${Cookies.get('access-token')}` },
+                                            });
+                                            setRatingSubmitted(true);
+                                            fetchReviews(); // Reload reviews to show the new one
+                                        } catch (err) {
+                                            const data = err?.response?.data;
+                                            if (data?.equipment) {
+                                                const msg = Array.isArray(data.equipment) ? data.equipment[0] : data.equipment;
+                                                setRatingError(String(msg));
+                                            } else if (data?.msg) setRatingError(data.msg);
+                                            else if (data?.non_field_errors) setRatingError(data.non_field_errors[0]);
+                                            else setRatingError('Failed to submit review. Please try again.');
+                                        } finally {
+                                            setRatingLoading(false);
+                                        }
+                                    }}
+                                    style={{
+                                        marginTop: '12px',
+                                        padding: '10px 24px', borderRadius: '10px',
+                                        border: 'none', fontWeight: 700, fontSize: '13px',
+                                        background: userRating ? 'linear-gradient(135deg, #f59e0b, #d97706)' : '#e5e7eb',
+                                        color: userRating ? '#fff' : '#9ca3af',
+                                        cursor: userRating ? 'pointer' : 'not-allowed',
+                                        transition: 'all 0.2s ease',
+                                    }}
+                                >
+                                    {ratingLoading ? 'Submitting...' : 'Submit Review'}
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Review submitted success */}
+                        {ratingSubmitted && (
+                            <div style={{
+                                background: '#ecfdf5', border: '1px solid #6ee7b7', borderRadius: '12px',
+                                padding: '16px 20px', marginBottom: '16px', textAlign: 'center',
+                            }}>
+                                <i className="fa-solid fa-circle-check" style={{ fontSize: '20px', color: '#16a34a', marginRight: '8px' }}></i>
+                                <span style={{ fontSize: '14px', fontWeight: 700, color: '#166534' }}>
+                                    Thanks for your review!
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Already reviewed notice */}
+                        {reviewData.has_reviewed && !ratingSubmitted && (
+                            <div style={{
+                                background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px',
+                                padding: '12px 16px', marginBottom: '16px', fontSize: '13px',
+                                color: '#166534', fontWeight: 600,
+                            }}>
+                                <i className="fa-solid fa-circle-check" style={{ marginRight: '6px' }}></i>
+                                You've already reviewed this equipment.
+                            </div>
+                        )}
+
+                        {/* Reviews list */}
+                        {reviewData.reviews.length > 0 ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                {reviewData.reviews.map((rev) => (
+                                    <div key={rev.id} style={{
+                                        background: '#fff', borderRadius: '12px',
+                                        padding: '16px 20px', border: '1px solid #f3f4f6',
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <div style={{
+                                                    width: '32px', height: '32px', borderRadius: '50%',
+                                                    background: 'linear-gradient(135deg, #68AC5D, #4a9c3f)',
+                                                    color: '#fff', display: 'flex', alignItems: 'center',
+                                                    justifyContent: 'center', fontSize: '13px', fontWeight: 700,
+                                                }}>
+                                                    {rev.user_name?.[0]?.toUpperCase() || '?'}
+                                                </div>
+                                                <div>
+                                                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#1f2937' }}>
+                                                        {rev.user_name}
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '2px' }}>
+                                                        {[1,2,3,4,5].map(s => (
+                                                            <i key={s} className="fa-solid fa-star" style={{
+                                                                fontSize: '10px',
+                                                                color: s <= rev.rating ? '#f59e0b' : '#e5e7eb',
+                                                            }}></i>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <span style={{ fontSize: '11px', color: '#9ca3af' }}>
+                                                {rev.created_at ? new Date(rev.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                                            </span>
+                                        </div>
+                                        {rev.review && (
+                                            <p style={{ fontSize: '13px', color: '#4b5563', margin: '8px 0 0 0', lineHeight: 1.6 }}>
+                                                {rev.review}
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p style={{ fontSize: '13px', color: '#9ca3af', textAlign: 'center', margin: '8px 0 0 0' }}>
+                                No reviews yet.
+                            </p>
+                        )}
                     </div>
 
                     {/* Cancellation Policy */}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import usePolling from "../../utils/usePolling";
 import "./Header.css";
 import { useNavigate } from "react-router-dom";
 import logo from "../../img/logo.png";
@@ -59,12 +60,13 @@ const Header = () => {
     }
   }, []);
 
+  // Initial fetch on login
   useEffect(() => {
-    if (!isLoggedIn) return;
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
+    if (isLoggedIn) fetchUnreadCount();
   }, [isLoggedIn, fetchUnreadCount]);
+
+  // Poll every 10s with visibility API (pauses when tab hidden, instant on tab focus)
+  usePolling(fetchUnreadCount, 10000, isLoggedIn);
 
   // ── Fetch notifications when panel opens ──
   const fetchNotifications = async () => {
@@ -268,6 +270,36 @@ const Header = () => {
             </div>
 
             {/* ══════════════════════════════════════ */}
+            {/*  CHAT MESSAGE ICON                    */}
+            {/* ══════════════════════════════════════ */}
+            <div className="notif-bell-wrapper">
+              <button
+                className="notif-bell-btn"
+                onClick={() => navigate("/chat")}
+                title="Messages"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#555"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+                {chatUnreadCount > 0 && (
+                  <span className="notif-badge" style={{ background: '#68AC5D' }}>
+                    {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* ══════════════════════════════════════ */}
             {/*  USER PROFILE DROPDOWN                */}
             {/* ══════════════════════════════════════ */}
             <div
@@ -308,44 +340,6 @@ const Header = () => {
                     className="px-5 text-gray-600 py-2 bg-white cursor-pointer border-solid border-b border-slate-400 hover:bg-gray-200"
                   >
                     Booking History
-                  </p>
-                  <p
-                    onClick={() => navigate("/notifications")}
-                    className="px-5 text-gray-600 py-2 bg-white cursor-pointer border-solid border-b border-slate-400 hover:bg-gray-200"
-                  >
-                    Notifications
-                    {unreadCount > 0 && (
-                      <span style={{
-                        marginLeft: '8px',
-                        background: '#ef4444',
-                        color: 'white',
-                        borderRadius: '10px',
-                        padding: '1px 7px',
-                        fontSize: '12px',
-                        fontWeight: '700',
-                      }}>
-                        {unreadCount}
-                      </span>
-                    )}
-                  </p>
-                  <p
-                    onClick={() => navigate("/chat")}
-                    className="px-5 text-gray-600 py-2 bg-white cursor-pointer border-solid border-b border-slate-400 hover:bg-gray-200"
-                  >
-                    Messages
-                    {chatUnreadCount > 0 && (
-                      <span style={{
-                        marginLeft: '8px',
-                        background: '#68AC5D',
-                        color: 'white',
-                        borderRadius: '10px',
-                        padding: '1px 7px',
-                        fontSize: '12px',
-                        fontWeight: '700',
-                      }}>
-                        {chatUnreadCount}
-                      </span>
-                    )}
                   </p>
                   <p
                     onClick={() => {

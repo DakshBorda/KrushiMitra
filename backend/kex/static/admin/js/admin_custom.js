@@ -97,4 +97,79 @@
         childList: true,
         subtree: true,
     });
+
+    // ══════════════════════════════════════════════════════════════════
+    //  AUTO-REFRESH — Silently reload change list pages every 30s
+    //  This ensures new bookings, messages, etc. appear without
+    //  manually hitting F5. Only runs on list pages (not edit forms).
+    // ══════════════════════════════════════════════════════════════════
+    (function setupAutoRefresh() {
+        // Only auto-refresh on changelist pages (URL contains /change/ is an edit form)
+        var path = window.location.pathname;
+        var isChangeList = path.match(/\/admin\/[^/]+\/[^/]+\/$/);
+        var isEditForm = path.match(/\/admin\/[^/]+\/[^/]+\/\d+\//);
+        var isAddForm = path.match(/\/admin\/[^/]+\/[^/]+\/add\//);
+
+        if (!isChangeList || isEditForm || isAddForm) return;
+
+        var REFRESH_INTERVAL = 30000; // 30 seconds
+        var refreshTimer = null;
+        var isTabVisible = true;
+
+        // Visibility API — pause refresh when tab is hidden
+        document.addEventListener('visibilitychange', function () {
+            isTabVisible = !document.hidden;
+            if (isTabVisible) {
+                // Immediately refresh when tab becomes visible
+                silentRefresh();
+                startTimer();
+            } else {
+                clearInterval(refreshTimer);
+                refreshTimer = null;
+            }
+        });
+
+        function silentRefresh() {
+            // Use fetch to get the same page, then replace the result table
+            fetch(window.location.href, {
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function (res) { return res.text(); })
+            .then(function (html) {
+                var parser = new DOMParser();
+                var newDoc = parser.parseFromString(html, 'text/html');
+
+                // Replace the results table
+                var newTable = newDoc.querySelector('#result_list');
+                var oldTable = document.querySelector('#result_list');
+                if (newTable && oldTable) {
+                    oldTable.innerHTML = newTable.innerHTML;
+                    // Re-run dropdown fixes on new content
+                    fixing = true;
+                    fixActionDropdowns();
+                    fixing = false;
+                }
+
+                // Update the result count text
+                var newCount = newDoc.querySelector('.paginator, p.paginator');
+                var oldCount = document.querySelector('.paginator, p.paginator');
+                if (newCount && oldCount) {
+                    oldCount.innerHTML = newCount.innerHTML;
+                }
+            })
+            .catch(function () {
+                // Silent fail — will retry next interval
+            });
+        }
+
+        function startTimer() {
+            if (refreshTimer) clearInterval(refreshTimer);
+            refreshTimer = setInterval(function () {
+                if (isTabVisible) silentRefresh();
+            }, REFRESH_INTERVAL);
+        }
+
+        startTimer();
+    })();
 })();

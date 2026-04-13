@@ -16,10 +16,10 @@ const Home = () => {
     navigator.geolocation.getCurrentPosition((position) => {
       setLatitude(position.coords.latitude);
       setLongitude(position.coords.longitude);
+    }, () => {
+      // Geolocation denied or unavailable — silently ignore
     });
   }, []);
-
-  console.log(latitude, longitude);
 
   return (
     <div style={{ overflow: "hidden" }}>

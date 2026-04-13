@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Cookies from "js-cookie";
-
-import { postDisputeData } from "../api/authAPI";
+import apiServer from "../api/config";
 
 const PartnerDispute = () => {
   const navigate = useNavigate();
@@ -17,8 +16,30 @@ const PartnerDispute = () => {
   const [topic, setTopic] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  // ── Client-side validation ──
+  const validate = () => {
+    const errs = {};
+
+    if (!name.trim()) errs.name = "Name is required";
+    else if (name.trim().length < 2) errs.name = "Name must be at least 2 characters";
+
+    if (!phone_number.trim()) errs.phone_number = "Phone number is required";
+    else if (!/^\d{10}$/.test(phone_number.trim())) errs.phone_number = "Enter a valid 10-digit phone number";
+
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) errs.email = "Enter a valid email address";
+
+    if (!topic) errs.topic = "Please select a dispute category";
+
+    if (!description.trim()) errs.description = "Please describe the issue";
+    else if (description.trim().length < 20) errs.description = "Please provide more detail (at least 20 characters)";
+
+    setFieldErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
 
   async function submitDispute(e) {
     e.preventDefault();
@@ -26,32 +47,47 @@ const PartnerDispute = () => {
     setError("");
     setMessage("");
 
-    if (!name.trim() || !phone_number.trim() || !topic || !description.trim()) {
-      setError("Please fill in all required fields.");
-      return;
-    }
+    if (!validate()) return;
 
     setLoading(true);
     try {
-      const data = await postDisputeData({
-        partner_id,
-        email,
-        name,
-        phone_number,
-        description,
-        topic,
-        equipment_id,
+      await apiServer.post('/enquiry/partner-dispute', {
+        partner_id: partner_id.trim() || "N/A",
+        email: email.trim() || null,
+        name: name.trim(),
+        phone_number: phone_number.trim(),
+        description: description.trim(),
+        topic: parseInt(topic, 10),
+        equipment_id: equipment_id.trim() || "N/A",
       });
-      if (data.success) {
-        setSuccess(true);
-        setMessage("Your dispute has been submitted successfully. Our team will review it and get back to you within 48 hours.");
-      }
+      setSuccess(true);
+      setMessage("Your dispute has been submitted successfully. Our team will review it and get back to you within 48 hours.");
     } catch (err) {
-      setError("Failed to submit dispute. Please try again or contact us directly at krushimitra@gmail.com");
+      const errData = err?.response?.data;
+      if (errData && typeof errData === 'object') {
+        // Show field-level errors from backend
+        const backendErrors = {};
+        Object.entries(errData).forEach(([key, val]) => {
+          backendErrors[key] = Array.isArray(val) ? val[0] : String(val);
+        });
+        if (Object.keys(backendErrors).length > 0) {
+          setFieldErrors(backendErrors);
+          setError("Please fix the errors below.");
+        } else {
+          setError("Failed to submit dispute. Please try again.");
+        }
+      } else {
+        setError("Failed to submit dispute. Please try again or contact us directly at krushimitra@gmail.com");
+      }
     } finally {
       setLoading(false);
     }
   }
+
+  // Clear field error on change
+  const clearError = (field) => {
+    setFieldErrors(prev => ({ ...prev, [field]: "" }));
+  };
 
   return (
     <div style={{ minHeight: "80vh", background: "#fafbfa" }}>
@@ -192,19 +228,22 @@ const PartnerDispute = () => {
                   <label style={labelStyle}>Your Name <span style={{ color: "#ef4444" }}>*</span></label>
                   <input
                     type="text" value={name}
-                    onChange={(e) => setFullName(e.target.value)}
-                    style={inputStyle} placeholder="Enter your full name"
-                    required
+                    onChange={(e) => { setFullName(e.target.value); clearError('name'); }}
+                    style={{ ...inputStyle, borderColor: fieldErrors.name ? '#ef4444' : '#e5e7eb' }}
+                    placeholder="Enter your full name"
                   />
+                  {fieldErrors.name && <span style={errorStyle}>{fieldErrors.name}</span>}
                 </div>
                 <div>
                   <label style={labelStyle}>Phone Number <span style={{ color: "#ef4444" }}>*</span></label>
                   <input
                     type="text" value={phone_number}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    style={inputStyle} placeholder="Your contact number"
-                    required
+                    onChange={(e) => { setPhoneNumber(e.target.value); clearError('phone_number'); }}
+                    style={{ ...inputStyle, borderColor: fieldErrors.phone_number ? '#ef4444' : '#e5e7eb' }}
+                    placeholder="10-digit mobile number"
+                    maxLength={10}
                   />
+                  {fieldErrors.phone_number && <span style={errorStyle}>{fieldErrors.phone_number}</span>}
                 </div>
               </div>
 
@@ -213,9 +252,11 @@ const PartnerDispute = () => {
                   <label style={labelStyle}>Email</label>
                   <input
                     type="email" value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    style={inputStyle} placeholder="your@email.com"
+                    onChange={(e) => { setEmail(e.target.value); clearError('email'); }}
+                    style={{ ...inputStyle, borderColor: fieldErrors.email ? '#ef4444' : '#e5e7eb' }}
+                    placeholder="your@email.com"
                   />
+                  {fieldErrors.email && <span style={errorStyle}>{fieldErrors.email}</span>}
                 </div>
                 <div>
                   <label style={labelStyle}>Equipment Name</label>
@@ -240,12 +281,12 @@ const PartnerDispute = () => {
                 <label style={labelStyle}>Dispute Category <span style={{ color: "#ef4444" }}>*</span></label>
                 <select
                   value={topic}
-                  onChange={(e) => setTopic(e.target.value)}
-                  required
+                  onChange={(e) => { setTopic(e.target.value); clearError('topic'); }}
                   style={{
                     ...inputStyle,
                     color: topic ? "#1f2937" : "#9ca3af",
                     cursor: "pointer",
+                    borderColor: fieldErrors.topic ? '#ef4444' : '#e5e7eb',
                   }}
                 >
                   <option value="" disabled>Select a category</option>
@@ -253,22 +294,24 @@ const PartnerDispute = () => {
                   <option value={20}>Equipment / Product issue</option>
                   <option value={30}>Breach of agreement</option>
                 </select>
+                {fieldErrors.topic && <span style={errorStyle}>{fieldErrors.topic}</span>}
               </div>
 
               <div style={{ marginBottom: "20px" }}>
                 <label style={labelStyle}>Describe the Issue <span style={{ color: "#ef4444" }}>*</span></label>
                 <textarea
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => { setDescription(e.target.value); clearError('description'); }}
                   rows={5}
-                  required
                   placeholder="Explain what happened, include dates, booking IDs, and any relevant details..."
                   style={{
                     ...inputStyle,
                     resize: "vertical",
                     minHeight: "120px",
+                    borderColor: fieldErrors.description ? '#ef4444' : '#e5e7eb',
                   }}
                 />
+                {fieldErrors.description && <span style={errorStyle}>{fieldErrors.description}</span>}
               </div>
 
               <button
@@ -327,6 +370,14 @@ const inputStyle = {
   boxSizing: "border-box",
   background: "#fff",
   transition: "border-color 0.2s ease",
+};
+
+const errorStyle = {
+  display: "block",
+  fontSize: "12px",
+  color: "#ef4444",
+  fontWeight: 600,
+  marginTop: "4px",
 };
 
 export default PartnerDispute;

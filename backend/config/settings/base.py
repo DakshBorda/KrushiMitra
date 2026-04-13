@@ -428,7 +428,7 @@ JAZZMIN_SETTINGS = {
     # Top Menu Links (header bar)
     "topmenu_links": [
         {"name": "Dashboard", "url": "admin:index", "permissions": ["auth.view_user"]},
-        {"name": "Visit Site", "url": "/", "new_window": True},
+        {"name": "Visit Site", "url": "http://localhost:3000", "new_window": True},
     ],
 
     # User Avatar

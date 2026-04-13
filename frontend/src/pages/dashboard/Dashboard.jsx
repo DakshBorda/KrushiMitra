@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, useCallback } from 'react'
 import './Dashboard.css';
 import ProductItem from '../../components/dashboardComponent/product/ProductItem';
 import { getEquips, getEquipsList, getBrands } from '../../api/equipments';
+import usePolling from '../../utils/usePolling';
 import { DateRangePicker } from 'react-date-range';
 import 'react-date-range/dist/styles.css';
 import 'react-date-range/dist/theme/default.css';
@@ -80,6 +81,22 @@ const Dashboard = () => {
         };
         fetchAll();
     }, []);
+
+    // Silent refresh every 60s with visibility API (pauses when tab hidden)
+    const silentRefreshEquipments = useCallback(async () => {
+        try {
+            const eqRes = await getEquips();
+            const d = eqRes?.data;
+            let items = [];
+            if (Array.isArray(d)) items = d;
+            else if (d?.results && Array.isArray(d.results)) items = d.results;
+            else if (d?.data && Array.isArray(d.data)) items = d.data;
+            setEquipments(items);
+        } catch (err) {
+            // Silent fail — will retry next interval
+        }
+    }, []);
+    usePolling(silentRefreshEquipments, 60000);
 
     // ── Date handler ──
     const handleDateSelect = (ranges) => {

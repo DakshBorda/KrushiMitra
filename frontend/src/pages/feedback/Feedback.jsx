@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { submitFeedback } from "../../api/equipments";
+import apiServer from "../../api/config";
 
 const RATING_LABELS = ["", "Poor", "Fair", "Good", "Great", "Excellent"];
 
@@ -14,30 +14,61 @@ const Feedback = () => {
   const [category, setCategory] = useState("");
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const [loading, setLoading] = useState(false);
+
+  // ── Client-side validation ──
+  const validate = () => {
+    const errs = {};
+
+    if (!name.trim()) errs.name = "Name is required";
+    else if (name.trim().length < 2) errs.name = "Name must be at least 2 characters";
+
+    if (!phone_number.trim()) errs.phone_number = "Phone number is required";
+    else if (!/^\d{10}$/.test(phone_number.trim())) errs.phone_number = "Enter a valid 10-digit phone number";
+
+    if (!description.trim()) errs.description = "Please share your feedback";
+    else if (description.trim().length < 10) errs.description = "Please provide more detail (at least 10 characters)";
+
+    setFieldErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const clearError = (field) => {
+    setFieldErrors(prev => ({ ...prev, [field]: "" }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (loading) return;
     setError("");
 
-    if (!name.trim() || !phone_number.trim() || !description.trim()) {
-      setError("Please fill in all required fields.");
-      return;
-    }
+    if (!validate()) return;
 
     setLoading(true);
     try {
-      const { data } = await submitFeedback({
-        name,
-        phone_number,
-        description: `${category ? `[${category}] ` : ""}${rating ? `Rating: ${rating}/5 — ` : ""}${description}`,
+      await apiServer.post("/enquiry/feedback", {
+        name: name.trim(),
+        phone_number: phone_number.trim(),
+        description: `${category ? `[${category}] ` : ""}${rating ? `Rating: ${rating}/5 — ` : ""}${description.trim()}`,
       });
-      if (data.success) {
-        setSuccess(true);
-      }
+      setSuccess(true);
     } catch (err) {
-      setError("Failed to submit feedback. Please try again.");
+      const errData = err?.response?.data;
+      if (errData && typeof errData === 'object') {
+        const backendErrors = {};
+        Object.entries(errData).forEach(([key, val]) => {
+          backendErrors[key] = Array.isArray(val) ? val[0] : String(val);
+        });
+        if (Object.keys(backendErrors).length > 0) {
+          setFieldErrors(backendErrors);
+          setError("Please fix the errors below.");
+        } else {
+          setError("Failed to submit feedback. Please try again.");
+        }
+      } else {
+        setError("Failed to submit feedback. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -206,21 +237,24 @@ const Feedback = () => {
                   <label style={labelStyle}>Name <span style={{ color: "#ef4444" }}>*</span></label>
                   <input
                     type="text" value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    style={inputStyle}
+                    onChange={(e) => { setName(e.target.value); clearError('name'); }}
+                    style={{ ...inputStyle, borderColor: fieldErrors.name ? '#ef4444' : '#e5e7eb' }}
                     placeholder="Your name"
-                    required id="feedback-name"
+                    id="feedback-name"
                   />
+                  {fieldErrors.name && <span style={errorStyle}>{fieldErrors.name}</span>}
                 </div>
                 <div>
                   <label style={labelStyle}>Phone Number <span style={{ color: "#ef4444" }}>*</span></label>
                   <input
                     type="text" value={phone_number}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    style={inputStyle}
+                    onChange={(e) => { setPhoneNumber(e.target.value); clearError('phone_number'); }}
+                    style={{ ...inputStyle, borderColor: fieldErrors.phone_number ? '#ef4444' : '#e5e7eb' }}
                     placeholder="10-digit number"
-                    required id="feedback-phone"
+                    id="feedback-phone"
+                    maxLength={10}
                   />
+                  {fieldErrors.phone_number && <span style={errorStyle}>{fieldErrors.phone_number}</span>}
                 </div>
               </div>
 
@@ -228,17 +262,18 @@ const Feedback = () => {
                 <label style={labelStyle}>Your Feedback <span style={{ color: "#ef4444" }}>*</span></label>
                 <textarea
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => { setDescription(e.target.value); clearError('description'); }}
                   rows={5}
-                  required
                   id="feedback-description"
                   placeholder="Tell us what you liked, what could be improved, or any suggestions..."
                   style={{
                     ...inputStyle,
                     resize: "vertical",
                     minHeight: "120px",
+                    borderColor: fieldErrors.description ? '#ef4444' : '#e5e7eb',
                   }}
                 />
+                {fieldErrors.description && <span style={errorStyle}>{fieldErrors.description}</span>}
               </div>
 
               <button
@@ -312,6 +347,14 @@ const inputStyle = {
   boxSizing: "border-box",
   background: "#fff",
   transition: "border-color 0.2s ease",
+};
+
+const errorStyle = {
+  display: "block",
+  fontSize: "12px",
+  color: "#ef4444",
+  fontWeight: 600,
+  marginTop: "4px",
 };
 
 export default Feedback;

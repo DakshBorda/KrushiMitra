@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Cookies from "js-cookie";
@@ -10,6 +10,7 @@ import {
   markAsRead,
   createChatWebSocket,
 } from "../../api/chatAPI";
+import usePolling from "../../utils/usePolling";
 import "./Chat.css";
 
 const MESSAGE_MAX_LENGTH = 2000;
@@ -41,10 +42,25 @@ const Chat = () => {
     }
   }, [navigate]);
 
+  // ── loadConversations — defined early so hooks below can reference it ──
+  const loadConversations = useCallback(async () => {
+    try {
+      const res = await getConversations();
+      setConversations(res?.data || []);
+    } catch (err) {
+      console.log("Error loading conversations:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Load conversations on mount
   useEffect(() => {
     loadConversations();
-  }, []);
+  }, [loadConversations]);
+
+  // Poll conversation list every 8s — catches new messages from ANY user
+  usePolling(loadConversations, 8000, !!Cookies.get("access-token"));
 
   // Handle incoming query params (start conversation from product/booking page)
   useEffect(() => {
@@ -63,9 +79,15 @@ const Chat = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom ONLY when a new message actually arrives
+  // (not on every polling refetch that replaces the array)
+  const lastMsgIdRef = useRef(null);
   useEffect(() => {
-    scrollToBottom();
+    const lastId = messages.length > 0 ? messages[messages.length - 1].id : null;
+    if (lastId && lastId !== lastMsgIdRef.current) {
+      lastMsgIdRef.current = lastId;
+      scrollToBottom();
+    }
   }, [messages]);
 
   // WebSocket connection management
@@ -103,33 +125,30 @@ const Chat = () => {
     };
   }, [activeConversation?.id]);
 
-  // Polling fallback — refresh messages every 5s if WebSocket isn't connected
+  // Polling fallback — ALWAYS refresh messages every 5s as a safety net
+  // (WebSocket may silently fail, so polling ensures messages always appear)
   useEffect(() => {
     if (!activeConversation) return;
 
     const interval = setInterval(() => {
-      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-        loadMessages(activeConversation.id, true);
-      }
+      loadMessages(activeConversation.id, true);
     }, 5000);
 
     return () => clearInterval(interval);
   }, [activeConversation?.id]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const loadConversations = async () => {
-    try {
-      const res = await getConversations();
-      setConversations(res?.data || []);
-    } catch (err) {
-      console.log("Error loading conversations:", err);
-    } finally {
-      setLoading(false);
+    // Scroll only the messages container, NOT the entire page
+    const el = messagesEndRef.current;
+    if (el) {
+      const container = el.parentElement;
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
     }
   };
+
+
 
   const loadMessages = async (conversationId, silent = false) => {
     if (!silent) setMessagesLoading(true);

@@ -39,5 +39,14 @@ INSTALLED_APPS += ["django_extensions"]  # noqa F405
 
 # http://docs.celeryproject.org/en/latest/userguide/configuration.html#task-eager-propagates
 CELERY_TASK_EAGER_PROPAGATES = True
+# Django Channels — InMemory for dev (no Redis needed)
+# This makes WebSocket chat work instantly with `manage.py runserver`
+# ──────────────────────────────────────────────────────────────────
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
+
 # Your stuff...
 # ------------------------------------------------------------------------------
